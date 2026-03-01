@@ -7,12 +7,12 @@ import { Observable } from 'rxjs';
 })
 export class HomeApi {
   http = inject(HttpClient);
-  apiUrl = 'http://localhost:3000/api';
+  apiUrl = '/api';
 
   constructor() { }
 
   public getExample(): Observable<any> {
-    return this.http.get(`${this.apiUrl}`)
+    return this.http.get(`${this.apiUrl}/home`);
   }
 
 }
