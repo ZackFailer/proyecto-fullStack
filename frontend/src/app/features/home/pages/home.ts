@@ -11,6 +11,9 @@ import { JsonPipe } from '@angular/common';
     <p>Data: {{data() | json}}</p>
     <p>Message: {{ message() }}</p>
     <p>Username: {{ username() }}</p>
+    <h1 class="text-3xl font-bold underline">
+      Hello world!
+    </h1>
   `,
   styles: `
     :host {

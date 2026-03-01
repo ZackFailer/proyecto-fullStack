@@ -1,30 +1,7 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
+import app, {PORT} from './app.js';
 
-dotenv.config();
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(cors());
-app.use(express.json());
-
-app.get('/api', (req, res) => {
-    res.json({
-        message: 'Hello from the backend!',
-        username: 'Paul Joseph'
-    });
-});
-
-app.get('about', (req, res) => {
-    res.json({
-        message: 'This is the about page of the backend!',
-        username: 'Paul Joseph'
-    });
-})
-
-app.listen(PORT, (()=> {
+app.listen(PORT, (() => {
     console.log('Server is running on port ', PORT);
 }));
 
