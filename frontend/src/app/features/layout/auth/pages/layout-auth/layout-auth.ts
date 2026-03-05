@@ -37,7 +37,11 @@ import { RouterOutlet } from '@angular/router';
 
     .header { grid-area: 1 / 1 / 2 / 3; }
     .sidebar { grid-area: 2 / 1 / 3 / 2; }
-    .content { grid-area: 2 / 2 / 3 / 3; padding: 0rem 1rem 1rem 1rem }
+    .content {
+      grid-area: 2 / 2 / 3 / 3;
+      padding: 0rem 1rem 1rem 1rem; 
+      overflow: scroll;
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
