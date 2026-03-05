@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { autenticate } from '../middleware/auth.middleware.js'
 
 const aboutController = {
     getAbout: (req: Request, res: Response) => {

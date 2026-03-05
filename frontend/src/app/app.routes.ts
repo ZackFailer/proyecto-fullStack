@@ -13,5 +13,9 @@ export const routes: Routes = [
   {
     path: 'about',
     loadComponent: () => import('./features/about/pages/about/about')
-  }
+  },
+  {
+    path: 'login',
+    loadComponent: () => import('./features/login/pages/login/login')
+  },
 ];

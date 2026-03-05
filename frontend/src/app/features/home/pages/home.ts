@@ -2,11 +2,18 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { HomeApi } from '../services/home-api';
 import { HomeData } from '../services/home-data';
 import { JsonPipe } from '@angular/common';
+import { Router, RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-home',
-  imports: [JsonPipe],
+  imports: [JsonPipe, RouterLink],
   template: `
+    <header class="flex justify-center">
+      <nav class="flex gap-4">
+        <a routerLink="/about">About</a>
+        <a routerLink="/login">Login</a>
+      </nav>
+    </header>
     <p>home works!</p>
     <p>Data: {{data() | json}}</p>
     <p>Message: {{ message() }}</p>
@@ -24,6 +31,7 @@ import { JsonPipe } from '@angular/common';
 })
 export default class Home {
   private readonly homeData = inject(HomeData);
+  
 
   protected readonly data = this.homeData.data;
   protected readonly message = this.homeData.message;
