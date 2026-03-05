@@ -56,7 +56,7 @@ Para probar las funcionalidades del panel sin necesidad de crear una cuenta nuev
 
 ### 1. Clonar el proyecto
 ```bash
-git clone [https://github.com/tu-usuario/nombre-del-repo.git](https://github.com/tu-usuario/nombre-del-repo.git)
+git clone https://github.com/ZackFailer/proyecto-fullStack.git
 cd nombre-del-repo
 ```
 
