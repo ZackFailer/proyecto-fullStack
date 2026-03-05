@@ -7,7 +7,7 @@ import { LayoutAdminData } from '../../services/layout-admin-data';
   selector: 'app-sidebar-auth-layout',
   imports: [PanelMenu],
   template: `
-    <div class="card flex justify-center px-4">
+    <div class="card flex justify-center">
       <p-panelmenu [model]="items" class="w-full md:w-80" />
     </div>
   `,

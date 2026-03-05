@@ -29,17 +29,18 @@ import { RouterOutlet } from '@angular/router';
       display: grid;
       grid-template-columns: 0.2fr 1fr;
       grid-template-rows: 0.1fr 1fr;
-      grid-row-gap: 1rem;
+      grid-row-gap: 0rem;
       grid-column-gap: 0rem;
       height: 100vh;
       width: 100vw;
+      background-color: #E9EEF6;
     }
 
     .header { grid-area: 1 / 1 / 2 / 3; }
-    .sidebar { grid-area: 2 / 1 / 3 / 2; }
+    .sidebar { grid-area: 2 / 1 / 3 / 2; padding: 1rem; }
     .content {
       grid-area: 2 / 2 / 3 / 3;
-      padding: 0rem 1rem 1rem 1rem; 
+      padding: 1rem 1rem 1rem 1rem; 
       overflow: scroll;
     }
   `,

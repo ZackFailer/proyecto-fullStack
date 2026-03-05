@@ -39,7 +39,11 @@ export interface ITableConfig<T> {
         <tr style="font-family: Arial, sans-serif; font-size: 14px; color: #555; border-bottom: 1px solid #ddd;">
           @for (col of columns; track $index) {
             <td>
-              {{ rowData[col.field] }}
+              @if (col.field === 'img') {
+                <img [src]="rowData[col.field]" [alt]="col.header" class="table-img" />
+              } @else {
+                {{ rowData[col.field] }}
+              }
             </td>
           }
           @if(tableConfig().showActions) {
@@ -53,6 +57,14 @@ export interface ITableConfig<T> {
   `,
   styles: `
     :host {
+      display: block;
+    }
+
+    .table-img {
+      width: 3rem;
+      height: 3rem;
+      object-fit: cover;
+      border-radius: 0.375rem;
       display: block;
     }
   `,
