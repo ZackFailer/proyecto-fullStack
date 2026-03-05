@@ -8,7 +8,7 @@ export const routes: Routes = [
   },
   {
     path: 'home',
-    loadComponent: () => import('./features/home/pages/home').then(m => m.default)
+    loadComponent: () => import('./features/home/pages/home')
   },
   {
     path: 'about',
@@ -17,5 +17,9 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./features/login/pages/login/login')
+  },
+  {
+    path: 'admin',
+    loadChildren: () => import('./features/layout/auth.routes')
   },
 ];
