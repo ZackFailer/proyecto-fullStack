@@ -31,7 +31,7 @@ import { Router, RouterLink } from '@angular/router';
 })
 export default class Home {
   private readonly homeData = inject(HomeData);
-  
+
 
   protected readonly data = this.homeData.data;
   protected readonly message = this.homeData.message;
