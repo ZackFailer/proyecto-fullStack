@@ -3,7 +3,7 @@ import { CardModule } from 'primeng/card';
 import { DashboardAdminData } from '../../services/dashboard-admin-data';
 import { ShortCardDashboard } from "../../components/short-card-dashboard/short-card-dashboard";
 import { TableModule } from 'primeng/table';
-import { SingleTable } from "../../../../shared/single-table/single-table";
+import { SingleTable } from "../../../../shared/table/single-table";
 import { ChartModule } from 'primeng/chart';
 
 @Component({

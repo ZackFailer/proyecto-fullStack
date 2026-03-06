@@ -1,18 +1,8 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { IShortCardDashboard } from '../../../@core/interfaces/i-short-card-dashboard';
-import { ITableConfig } from '../../../shared/single-table/single-table';
+import { ITableColumn, ITableConfig } from '../../../shared/table/single-table';
+import { IProduct } from '../../../@core/interfaces/i-product';
 import { DashboardAdminApi } from './dashboard-admin-api';
-
-export interface ITableColumn {
-  field: string;
-  header: string;
-}
-
-export interface IProduct {
-  img: string;
-  name: string;
-  price: number;
-}
 
 @Injectable({
   providedIn: 'root'

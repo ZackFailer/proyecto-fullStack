@@ -1,7 +1,11 @@
-import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { TableModule } from 'primeng/table';
-import { ITableColumn } from '../../features/dashboard/services/dashboard-admin-data';
 import { Button } from "primeng/button";
+
+export interface ITableColumn {
+  field: string;
+  header: string;
+}
 
 export interface ITableConfig<T> {
   item: T[]
@@ -19,7 +23,8 @@ export interface ITableConfig<T> {
       [value]="tableConfig().item"
       [paginator]="tableConfig().paginator || false"
       [rows]="tableConfig().rows || 5"
-      tableStyle]="{ 'min-width': '50rem' }"
+      [globalFilterFields]="tableConfig().columns.map(col => col.field)"
+      [tableStyle]="{ 'min-width': '50rem' }"
       >
       <ng-template pTemplate="header" let-columns>
         <tr style="font-family: Arial, sans-serif; font-size: 14px; color: #333; text-align: left;">
@@ -29,8 +34,10 @@ export interface ITableConfig<T> {
             </th>
           }
           @if (tableConfig().showActions) {
-            <th style="display: flex; justify-content: center">
-              Acciones
+            <th>
+              <div class="text-center">
+                Acciones
+              </div>
             </th>
           }
         </tr>
@@ -47,8 +54,10 @@ export interface ITableConfig<T> {
             </td>
           }
           @if(tableConfig().showActions) {
-            <td style="display: flex; justify-content: center">
-              <p-button icon="pi pi-search" size="small" rounded severity="secondary" ></p-button>
+            <td>
+              <div class="flex justify-center">
+                <p-button icon="pi pi-search" size="small" rounded severity="secondary" ></p-button>
+              </div>
             </td>
           }
         </tr>

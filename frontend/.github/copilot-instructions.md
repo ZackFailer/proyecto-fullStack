@@ -33,6 +33,10 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Do NOT use `ngClass`, use `class` bindings instead
 - Do NOT use `ngStyle`, use `style` bindings instead
 - When using external templates/styles, use paths relative to the component TS file.
+- Prefer using `shared` folder for reusable components, directives, and pipes that are used across multiple features, and use `components` folder for components that are specific to a single feature or domain.
+- Prefer using `pages` folder for components that represent full pages or views in the application, and use `components` folder for smaller, reusable components that are used within those pages.
+- Prioritize reusing 'shared' components if they exist before creating new ones in 'components' folder.
+- If need create a new component, first check if there is an existing one in the 'shared' folder that can be reused. If not, create a new component in the 'components' folder of the relevant feature module and use the component of primeNG.
 
 ## State Management
 
@@ -53,3 +57,22 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Design services around a single responsibility
 - Use the `providedIn: 'root'` option for singleton services
 - Use the `inject()` function instead of constructor injection
+- Prefer using `services` folder for services that are specific to a single feature or domain, and use `core` folder for services that are used across multiple features, such as authentication, logging, or error handling.
+- Avoid using services as a state management solution; prefer signals and `computed()` for local state and derived state instead.
+- `data` services should be responsible for fetching and transforming data, while state management should be handled within components using signals.
+- `api` services should be responsible for making HTTP requests and handling API interactions, while `adapter` services should be responsible for transforming data between different layers of the application.
+
+
+## Structure
+
+- Organize files by feature or domain rather than by type
+- Use clear and consistent naming conventions for files and symbols
+- Keep a flat file structure within feature folders, avoid deep nesting
+- Use barrel files (`index.ts`) to re-export symbols for easier imports
+- Avoid circular dependencies by carefully managing imports and using interfaces when necessary
+- Use a consistent folder structure for components, services, and other artifacts within each feature module.
+- For example, within a `products` feature folder, you might have subfolders for `components` and `services`.
+- All pages need to be in a `pages` folder, and all shared components in a `shared` folder.
+- All pages need `data` service, `api` service and `adapter` service, and they need to be in a `services` folder.
+
+

@@ -14,6 +14,10 @@ const authRoutes: Routes = [
         path: 'dashboard',
         loadComponent: () => import('../dashboard/pages/dashboard-admin/dashboard-admin')
       },
+      {
+        path: 'products',
+        loadComponent: () => import('../products/pages/product-list/product-list')
+      },
     ],
   },
 ];
