@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import {AuthRequest} from '../@core/interfaces/i-auth.js'
+import {AuthRequest} from '../models/auth.model.js'
 
 export const autenticate = (
     req:AuthRequest, res:Response, next:NextFunction
