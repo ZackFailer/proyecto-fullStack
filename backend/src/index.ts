@@ -1,9 +1,7 @@
 
-import app, { PORT } from "./app.js";
+import app from "./app.js";
 
-
-
-app.listen(PORT, () => {
-    console.log("Server is running on port", PORT);
+app.listen(app.get('PORT'), () => {
+    console.log("Server is running on port", app.get('PORT'));
 });
 
