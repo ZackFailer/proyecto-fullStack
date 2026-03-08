@@ -11,11 +11,11 @@ export interface IFilterConfig {
 }
 
 export interface ISelectFilter {
+  key: keyof IProduct;
   name: string;
   options: ISelectList[];
   selectedValue?: string;
   placeholder?: string;
-  emmitedValue: (value: string) => void;
 }
 
 @Injectable({
@@ -40,6 +40,7 @@ export class ProductData {
 
   private readonly selectFilters = signal<ISelectFilter[]>([
     {
+      key: 'category',
       name: 'Categoría',
       options: [
         { name: 'Electrónica', code: 'ELEC' },
@@ -47,10 +48,6 @@ export class ProductData {
         { name: 'Hogar', code: 'HOG' },
       ],
       placeholder: 'Filtrar por categoría',
-      emmitedValue: (value: string) => {
-        console.log('Valor emitido:', value);
-        // Lógica para manejar el valor emitido
-      }
     }
   ]);
 
