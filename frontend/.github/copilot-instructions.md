@@ -1,78 +1,56 @@
 
-You are an expert in TypeScript, Angular, and scalable web application development. You write functional, maintainable, performant, and accessible code following Angular and TypeScript best practices.
+You are the **Frontend UI Agent** for this workspace. Default to the Frontend UI Agent in `.github/AGENTS.md`; switch to the Docs & Content Agent only for documentation/copy tasks. Write functional, maintainable, performant, and accessible Angular code.
 
-## TypeScript Best Practices
+## TypeScript
+- Keep `strict` flags on; fix type errors instead of loosening settings. Avoid `any`; use `unknown` + narrowing when needed.
+- Prefer inference when obvious; annotate public APIs, observable outputs, and signal shapes.
+- Favor `readonly` for signals, arrays, and objects that should not mutate. Keep DTOs/interfaces close to their feature.
 
-- Use strict type checking
-- Prefer type inference when the type is obvious
-- Avoid the `any` type; use `unknown` when type is uncertain
+## Angular
+- Standalone components only; do **not** set `standalone: true` in decorators (default in v20+).
+- Use signals for local state and `computed()` for derived values; keep data flow unidirectional.
+- Lazy-load feature routes. Use `input()`/`output()` functions; avoid `@HostBinding`/`@HostListener`—use `host` metadata instead.
+- Always set `changeDetection: ChangeDetectionStrategy.OnPush`.
+- Use `NgOptimizedImage` for static images (not for inline base64).
+- Stack: PrimeNG 21.1.3 with Tailwind 4/PostCSS (`@tailwindcss/postcss`, `tailwindcss-primeui`). Favor PrimeNG components and style with Tailwind utilities over ad-hoc CSS; keep theme tokens consistent.
 
-## Angular Best Practices
+## Accessibility
+- Must pass AXE and meet WCAG AA: focus management, color contrast, ARIA attributes.
+- Provide accessible labels for controls; ensure keyboard reachability and focus order.
 
-- Always use standalone components over NgModules
-- Must NOT set `standalone: true` inside Angular decorators. It's the default in Angular v20+.
-- Use signals for state management
-- Implement lazy loading for feature routes
-- Do NOT use the `@HostBinding` and `@HostListener` decorators. Put host bindings inside the `host` object of the `@Component` or `@Directive` decorator instead
-- Use `NgOptimizedImage` for all static images.
-  - `NgOptimizedImage` does not work for inline base64 images.
+## Components
+- Keep components small/single-responsibility; prefer inline templates for small pieces.
+- Use Reactive Forms over template-driven.
+- No `ngClass`/`ngStyle`; use `class`/`style` bindings.
+- File naming: kebab-case; pages under `pages/<page>/<page>.ts` exporting `<Page>Component`. Selectors are feature-scoped (e.g., `app-home-table`). Routes are lowercase hyphenated.
+- Reuse shared components before creating new ones; shared items under `shared/`, feature-only under `components/`, full pages under `pages/`.
 
-## Accessibility Requirements
-
-- It MUST pass all AXE checks.
-- It MUST follow all WCAG AA minimums, including focus management, color contrast, and ARIA attributes.
-
-### Components
-
-- Keep components small and focused on a single responsibility
-- Use `input()` and `output()` functions instead of decorators
-- Use `computed()` for derived state
-- Set `changeDetection: ChangeDetectionStrategy.OnPush` in `@Component` decorator
-- Prefer inline templates for small components
-- Prefer Reactive forms instead of Template-driven ones
-- Do NOT use `ngClass`, use `class` bindings instead
-- Do NOT use `ngStyle`, use `style` bindings instead
-- When using external templates/styles, use paths relative to the component TS file.
-- Prefer using `shared` folder for reusable components, directives, and pipes that are used across multiple features, and use `components` folder for components that are specific to a single feature or domain.
-- Prefer using `pages` folder for components that represent full pages or views in the application, and use `components` folder for smaller, reusable components that are used within those pages.
-- Prioritize reusing 'shared' components if they exist before creating new ones in 'components' folder.
-- If need create a new component, first check if there is an existing one in the 'shared' folder that can be reused. If not, create a new component in the 'components' folder of the relevant feature module and use the component of primeNG.
-
-## State Management
-
-- Use signals for local component state
-- Use `computed()` for derived state
-- Keep state transformations pure and predictable
-- Do NOT use `mutate` on signals, use `update` or `set` instead
+## State & Signals
+- Use `signal` for writable state, `computed` for derived; avoid mutable class fields.
+- Expose signals as `readonly` when callers should not set them.
+- When bridging observables, prefer `toSignal` instead of manual subscriptions; avoid `mutate`, use `set`/`update`.
 
 ## Templates
-
-- Keep templates simple and avoid complex logic
-- Use native control flow (`@if`, `@for`, `@switch`) instead of `*ngIf`, `*ngFor`, `*ngSwitch`
-- Use the async pipe to handle observables
-- Do not assume globals like (`new Date()`) are available.
+- Keep templates simple; use native control flow (`@if`, `@for`, `@switch`).
+- Use the async pipe for observables; do not assume globals like `new Date()` are available.
 
 ## Services
+- Single responsibility; prefer `inject()` over constructor injection for services.
+- `providedIn: 'root'` for singletons. Feature-specific services stay in `services/` per feature; cross-cutting in `@core`.
+- Separate roles: `api` services for HTTP, `data` for fetching/transforming, `adapter` for mapping between layers. Avoid using services as state stores—keep state in components via signals.
 
-- Design services around a single responsibility
-- Use the `providedIn: 'root'` option for singleton services
-- Use the `inject()` function instead of constructor injection
-- Prefer using `services` folder for services that are specific to a single feature or domain, and use `core` folder for services that are used across multiple features, such as authentication, logging, or error handling.
-- Avoid using services as a state management solution; prefer signals and `computed()` for local state and derived state instead.
-- `data` services should be responsible for fetching and transforming data, while state management should be handled within components using signals.
-- `api` services should be responsible for making HTTP requests and handling API interactions, while `adapter` services should be responsible for transforming data between different layers of the application.
-
+## Subscriptions & Errors
+- Never call `subscribe` without `error` and `complete`; use `subscribe({ next, error, complete })`.
+- Use `catchError` with typed fallbacks; log via shared error handler and surface user-friendly messages.
+- Use `takeUntilDestroyed()` (or equivalent) to avoid leaks; prefer higher-order mapping (`switchMap`, `concatMap`, `exhaustMap`) over nested subscriptions.
 
 ## Structure
+- Organize by feature/domain, keep folders shallow. Use barrel files (`index.ts`) when they simplify imports without creating cycles.
+- All pages must reside in `pages/`; shared components in `shared/`; feature-only components in `components/`.
+- Each page should have `data`, `api`, and `adapter` services under `services/`.
 
-- Organize files by feature or domain rather than by type
-- Use clear and consistent naming conventions for files and symbols
-- Keep a flat file structure within feature folders, avoid deep nesting
-- Use barrel files (`index.ts`) to re-export symbols for easier imports
-- Avoid circular dependencies by carefully managing imports and using interfaces when necessary
-- Use a consistent folder structure for components, services, and other artifacts within each feature module.
-- For example, within a `products` feature folder, you might have subfolders for `components` and `services`.
-- All pages need to be in a `pages` folder, and all shared components in a `shared` folder.
-- All pages need `data` service, `api` service and `adapter` service, and they need to be in a `services` folder.
+## Strictness & Testing
+- Do not relax `tsconfig` strict options. Add unit tests for services/components with observable flows, covering error paths and default states.
+- Prefer strongly typed mocks/fixtures over `any` or broad casts.
 
 

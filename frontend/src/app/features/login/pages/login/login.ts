@@ -1,30 +1,89 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Auth } from '../../../../@core/services/auth/auth';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { CardModule } from 'primeng/card';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { PasswordModule } from 'primeng/password';
+import { DividerModule } from 'primeng/divider';
+import { TagModule } from 'primeng/tag';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, RouterLink, CardModule, ButtonModule, InputTextModule, PasswordModule, DividerModule, TagModule],
   template: `
-  <div class="flex justify-center items-center h-screen">
-    <div class="bg-white p-8 rounded shadow-md w-full max-w-md">
-      <h2 class="text-2xl font-bold mb-6 text-center">Login</h2>
-      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-        <div class="flex flex-col">
-          <label for="username">Email</label>
-          <input type="email" id="username" class="border rounded p-2" formControlName="username">
+  <main class="min-h-screen bg-surface-50 text-surface-900 flex items-center justify-center px-4 py-10">
+    <p-card styleClass="w-full max-w-xl shadow-2 border border-surface-200">
+      <ng-template pTemplate="header">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 via-teal-400 to-sky-500 text-white shadow-md shadow-emerald-400/30">
+              <i class="pi pi-lock"></i>
+            </span>
+            <div>
+              <p class="text-xs uppercase tracking-[0.25em] text-emerald-700">Mean Admin</p>
+              <p class="text-sm text-surface-500">Accede al panel seguro</p>
+            </div>
+          </div>
+          <p-button label="Volver" icon="pi pi-arrow-left" styleClass="p-button-text p-button-sm" [routerLink]="['/']"></p-button>
         </div>
-        <div class="flex flex-col">
-          <label for="password">Password</label>
-          <input type="password" id="password" class="border rounded p-2" formControlName="password">
+      </ng-template>
+
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <p-tag value="Inicio de sesión" severity="success"></p-tag>
+          <h1 class="text-2xl font-semibold text-surface-900">Tu espacio de trabajo</h1>
+          <p class="text-sm text-surface-600">Usa las credenciales demo (ejemplo@gmail.com / 123456) para explorar el dashboard.</p>
         </div>
-        <div class="flex justify-center mt-6">
-          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded cursor-pointer hover:bg-blue-700">Login</button>
+
+        <form class="space-y-4" [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+          <div class="space-y-2">
+            <label for="username" class="text-sm font-medium text-surface-800">Email</label>
+            <input
+              pInputText
+              type="email"
+              id="username"
+              class="w-full"
+              placeholder="ejemplo@gmail.com"
+              formControlName="username"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="password" class="text-sm font-medium text-surface-800">Password</label>
+            <p-password
+              id="password"
+              [feedback]="false"
+              toggleMask="true"
+              formControlName="password"
+              styleClass="w-full"
+              inputStyleClass="w-full"
+              placeholder="••••••"
+            ></p-password>
+          </div>
+
+          <p-button
+            type="submit"
+            label="Ingresar"
+            icon="pi pi-sign-in"
+            styleClass="w-full p-button-success"
+          ></p-button>
+        </form>
+
+        <p-divider></p-divider>
+
+        <div class="space-y-2 text-xs text-surface-600">
+          <p class="font-semibold text-emerald-700">Tips rápidos</p>
+          <ul class="list-disc space-y-1 pl-4">
+            <li>Envelope JSON unificado visible en Home.</li>
+            <li>JWT y cookies seguras aplican al iniciar sesión.</li>
+            <li>Standalone components + Signals para UI reactiva.</li>
+          </ul>
         </div>
-      </form>
-    </div>
-  </div>
-    <p>login works!</p>
+      </div>
+    </p-card>
+  </main>
   `,
   styles: `
     :host {
@@ -54,7 +113,7 @@ export default class Login {
       password: raw.password ?? ''
     };
     console.log(credentials);
-    
+
     this.auth.authenticate(credentials);
   }
 
