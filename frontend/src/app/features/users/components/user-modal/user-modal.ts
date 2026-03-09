@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 import { InputText } from 'primeng/inputtext';
@@ -16,11 +24,19 @@ interface Option<T> {
 
 @Component({
   selector: 'app-user-modal',
-  imports: [DialogModule, ReactiveFormsModule, InputText, PasswordModule, SelectModule, ButtonModule, DividerModule],
+  imports: [
+    DialogModule,
+    ReactiveFormsModule,
+    InputText,
+    PasswordModule,
+    SelectModule,
+    ButtonModule,
+    DividerModule,
+  ],
   template: `
     <p-dialog
       [modal]="true"
-      [style]="{ width: '35rem' }"
+      [style]="{ width: '80%' }"
       [draggable]="false"
       [resizable]="false"
       [closable]="false"
@@ -32,47 +48,70 @@ interface Option<T> {
         <div class="grid gap-3 md:grid-cols-2">
           <label class="flex flex-col gap-2 text-sm text-surface-700" for="firstName">
             Nombre
-            <input id="firstName" pInputText type="text" formControlName="firstName" placeholder="Camila" />
+            <input
+              id="firstName"
+              pInputText
+              type="text"
+              formControlName="firstName"
+              placeholder="Camila"
+            />
             @if (form.controls.firstName.invalid && form.controls.firstName.touched) {
-              <span class="text-xs text-red-500">Requerido (1-60 caracteres)</span>
+              <span class="text-xs text-red-500">Requerido (1-30 caracteres)</span>
             }
           </label>
           <label class="flex flex-col gap-2 text-sm text-surface-700" for="lastName">
             Apellido
-            <input id="lastName" pInputText type="text" formControlName="lastName" placeholder="Lopez" />
+            <input
+              id="lastName"
+              pInputText
+              type="text"
+              formControlName="lastName"
+              placeholder="Lopez"
+            />
             @if (form.controls.lastName.invalid && form.controls.lastName.touched) {
-              <span class="text-xs text-red-500">Requerido (1-60 caracteres)</span>
+              <span class="text-xs text-red-500">Requerido (1-30 caracteres)</span>
             }
           </label>
         </div>
 
-        <label class="flex flex-col gap-2 text-sm text-surface-700" for="email">
-          Correo
-          <input id="email" pInputText type="email" formControlName="email" placeholder="nombre@empresa.com" />
-          @if (form.controls.email.invalid && form.controls.email.touched) {
-            <span class="text-xs text-red-500">Usa un correo válido (5-120 caracteres)</span>
-          }
-        </label>
-
-        @if (!isEdit()) {
-          <label class="flex flex-col gap-2 text-sm text-surface-700" for="password">
-            Password inicial (opcional)
-            <p-password
-              id="password"
-              formControlName="password"
-              [feedback]="true"
-              [toggleMask]="true"
-              placeholder="Mínimo 12 caracteres"
-              [promptLabel]="'Define una contraseña fuerte'"
-              [weakLabel]="'Débil'"
-              [mediumLabel]="'Media'"
-              [strongLabel]="'Fuerte'"
-            ></p-password>
-            @if (form.controls.password.invalid && form.controls.password.touched) {
-              <span class="text-xs text-red-500">Mínimo 12 caracteres, incluye mayúsculas, minúsculas, número y símbolo.</span>
+        <div class="grid grid-cols-2 gap-4">
+          <label class="flex flex-col gap-2 text-sm text-surface-700" for="email">
+            Correo
+            <input
+              id="email"
+              pInputText
+              type="email"
+              formControlName="email"
+              placeholder="ejemplo@gmail.com"
+            />
+            @if (form.controls.email.invalid && form.controls.email.touched) {
+              <span class="text-xs text-red-500">Usa un correo válido (5-60 caracteres)</span>
             }
           </label>
-        }
+
+          @if (!isEdit()) {
+            <div class="flex flex-col gap-2 text-sm text-surface-700">
+              <label for="password"> Password </label>
+              <p-password
+                id="password"
+                formControlName="password"
+                [feedback]="true"
+                [toggleMask]="true"
+                fluid
+                placeholder="Mínimo 12 caracteres"
+                [promptLabel]="'Define una contraseña fuerte'"
+                [weakLabel]="'Débil'"
+                [mediumLabel]="'Media'"
+                [strongLabel]="'Fuerte'"
+              />
+              @if (form.controls.password.invalid && form.controls.password.touched) {
+                <span class="text-xs text-red-500"
+                  >Mínimo 12 caracteres, incluye mayúsculas, minúsculas, número y símbolo.</span
+                >
+              }
+            </div>
+          }
+        </div>
 
         <div class="grid gap-3 md:grid-cols-2">
           <label class="flex flex-col gap-2 text-sm text-surface-700" for="role">
@@ -105,26 +144,50 @@ interface Option<T> {
 
         <label class="flex flex-col gap-2 text-sm text-surface-700" for="phone">
           Teléfono (opcional)
-          <input id="phone" pInputText type="tel" formControlName="phone" placeholder="+57 300 000 0000" />
+          <input
+            id="phone"
+            pInputText
+            type="tel"
+            formControlName="phone"
+            placeholder="+57 300 000 0000"
+          />
         </label>
 
         <p-divider></p-divider>
 
         <div class="flex items-center justify-between gap-2">
           <div class="text-xs text-surface-600">
-            {{ isEdit() ? 'Edita rol, estado o perfil sin salir de la vista.' : 'El usuario recibirá invitación con estado activo o pendiente.' }}
+            {{
+              isEdit()
+                ? 'Edita rol, estado o perfil sin salir de la vista.'
+                : 'El usuario recibirá invitación con estado activo o pendiente.'
+            }}
           </div>
           <div class="flex gap-2">
-            <p-button type="button" label="Cancelar" styleClass="p-button-text" (onClick)="onCancel()" />
-            <p-button type="submit" label="{{ isEdit() ? 'Guardar cambios' : 'Crear usuario' }}" [loading]="saving()" icon="pi pi-check" />
+            <p-button
+              type="button"
+              label="Cancelar"
+              styleClass="p-button-text"
+              (onClick)="onCancel()"
+            />
+            <p-button
+              type="submit"
+              label="{{ isEdit() ? 'Guardar cambios' : 'Crear usuario' }}"
+              [loading]="saving()"
+              icon="pi pi-check"
+            />
           </div>
         </div>
       </form>
     </p-dialog>
   `,
   styles: `
-    :host { display: block; }
-    p-dialog ::ng-deep .p-dialog-header { border-bottom: 1px solid var(--surface-border); }
+    :host {
+      display: block;
+    }
+    p-dialog ::ng-deep .p-dialog-header {
+      border-bottom: 1px solid var(--surface-border);
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -141,42 +204,68 @@ export class UserModal {
   private readonly fb = inject(FormBuilder);
 
   readonly form = this.fb.nonNullable.group({
-    firstName: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(60)]],
-    lastName: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(60)]],
-    email: ['', [Validators.required, Validators.email, Validators.minLength(5), Validators.maxLength(120)]],
+    firstName: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(30)]],
+    lastName: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(30)]],
+    email: [
+      '',
+      [Validators.required, Validators.email, Validators.minLength(5), Validators.maxLength(60)],
+    ],
     role: this.fb.nonNullable.control<UserRole>('viewer', Validators.required),
     status: this.fb.nonNullable.control<UserStatus>('active', Validators.required),
     phone: this.fb.control<string | null>(null, [Validators.maxLength(20)]),
-    password: this.fb.control<string>('', []),
+    password: this.fb.control<string>('', [Validators.required]),
   });
 
   readonly isEdit = computed(() => Boolean(this.user()));
 
+  // Tracks the last user/mode used to fill the form to avoid unintended resets
+  private formStateKey: string | null = null;
+
   constructor() {
     effect(() => {
+      const isVisible = this.visible();
       const current = this.user();
+      const nextKey = isVisible ? (current?.id ?? '__create__') : null;
+
+      // Only re-sync when the modal opens with a different user/mode.
+      if (nextKey === this.formStateKey) {
+        return;
+      }
+
+      this.formStateKey = nextKey;
+
+      if (!isVisible) {
+        return;
+      }
+
       if (current) {
-        this.form.reset({
-          firstName: current.firstName,
-          lastName: current.lastName,
-          email: current.email,
-          role: current.role,
-          status: current.status,
-          phone: current.phone ?? null,
-          password: '',
-        }, { emitEvent: false });
+        this.form.reset(
+          {
+            firstName: current.firstName,
+            lastName: current.lastName,
+            email: current.email,
+            role: current.role,
+            status: current.status,
+            phone: current.phone ?? null,
+            password: '',
+          },
+          { emitEvent: false },
+        );
         this.form.controls.email.disable({ emitEvent: false });
         this.form.controls.password.disable({ emitEvent: false });
       } else {
-        this.form.reset({
-          firstName: '',
-          lastName: '',
-          email: '',
-          role: 'viewer',
-          status: 'active',
-          phone: null,
-          password: '',
-        }, { emitEvent: false });
+        this.form.reset(
+          {
+            firstName: '',
+            lastName: '',
+            email: '',
+            role: 'viewer',
+            status: 'active',
+            phone: null,
+            password: '',
+          },
+          { emitEvent: false },
+        );
         this.form.controls.email.enable({ emitEvent: false });
         this.form.controls.password.enable({ emitEvent: false });
       }
