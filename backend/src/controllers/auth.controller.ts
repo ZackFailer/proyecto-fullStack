@@ -1,57 +1,52 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { error } from 'node:console';
+import { User } from '../models/user.model.js';
 
-
-const fakeUser = {
-  id: 1,
-  email: 'ejemplo@gmail.com',
-  // La contraseña debe estar hasheada. Supongamos que "123456" hasheada es:
-  password: bcrypt.hashSync("123456", 10) // (debes generarlo con bcrypt.hashSync("123456", 10))
+const signToken = (payload: object) => {
+    const secret = process.env.JWT_SECRET || 'fallback_secret_no_usar_en_produccion';
+    return jwt.sign(payload, secret, { expiresIn: '1h' });
 };
 
-const authController = {
-    login: async (req: Request, res: Response): Promise<void> => {
-        try {
-            const { email, password } = req.body;
-    
-            if (!email || !password) {
-                res.status(400).json({ message: 'Email and password are required' });
-                return;
-            }
-    
-            if (email !== fakeUser.email) {
-                res.status(401).json({ message: 'Invalid email or password' });
-                return;
-            }
-    
-            const isPasswordValid = await bcrypt.compare(password, fakeUser.password);
-            if (!isPasswordValid) {
-                res.status(401).json({ message: 'Invalid email or password' });
-                return;
-            }
-    
-            const payload = { id: fakeUser.id, email: fakeUser.email };
-    
-            const token = jwt.sign(
-                payload,
-                process.env.JWT_SECRET || 'your_jwt_secret',
-                { expiresIn: '1h' });
-    
-            res.cookie('token', token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production' || false,
-                sameSite: 'strict',
-                maxAge: 60 * 60 * 1000 // 1 hour
-            });
+export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const { email, password } = req.body;
 
-            res.json({message: 'Login successful', user: payload})
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({message: 'Internal server error'});
+        if (!email || !password) {
+            res.status(400).json({ success: false, message: 'Email y password son requeridos' });
+            return;
         }
-    }
-}
 
-export default authController;
+        const user = await User.findOne({ email: email.toLowerCase(), deletedAt: null }).lean();
+        if (!user || !user.passwordHash) {
+            res.status(401).json({ success: false, message: 'Credenciales inválidas' });
+            return;
+        }
+
+        const match = await bcrypt.compare(password, user.passwordHash);
+        if (!match) {
+            res.status(401).json({ success: false, message: 'Credenciales inválidas' });
+            return;
+        }
+
+        const payload = {
+            id: user._id?.toString(),
+            role: user.role,
+            clientId: user.clientId ? user.clientId.toString() : null,
+            email: user.email,
+        };
+
+        const token = signToken(payload);
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production' || false,
+            sameSite: 'strict',
+            maxAge: 60 * 60 * 1000,
+        });
+
+        res.status(200).json({ success: true, message: 'Login exitoso', data: { token, user: payload } });
+    } catch (err) {
+        return next(err);
+    }
+};
