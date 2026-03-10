@@ -1,4 +1,4 @@
-export * from './hero-header/hero-header';
+export * from '../../../shared/hero-header/hero-header';
 export * from './highlights/highlights';
 export * from './api-preview/api-preview';
 export * from './demo-signals/demo-signals';

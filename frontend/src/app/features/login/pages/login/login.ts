@@ -16,7 +16,8 @@ import { TagModule } from 'primeng/tag';
   <main class="min-h-screen bg-surface-50 text-surface-900 flex items-center justify-center px-4 py-10">
     <p-card styleClass="w-full max-w-xl shadow-2 border border-surface-200">
       <ng-template pTemplate="header">
-        <div class="flex items-center justify-between">
+
+        <div class="flex items-center p-4 justify-between">
           <div class="flex items-center gap-3">
             <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 via-teal-400 to-sky-500 text-white shadow-md shadow-emerald-400/30">
               <i class="pi pi-lock"></i>
@@ -28,13 +29,14 @@ import { TagModule } from 'primeng/tag';
           </div>
           <p-button label="Volver" icon="pi pi-arrow-left" styleClass="p-button-text p-button-sm" [routerLink]="['/']"></p-button>
         </div>
+
       </ng-template>
 
       <div class="space-y-4">
         <div class="space-y-2">
           <p-tag value="Inicio de sesión" severity="success"></p-tag>
           <h1 class="text-2xl font-semibold text-surface-900">Tu espacio de trabajo</h1>
-          <p class="text-sm text-surface-600">Usa las credenciales demo (ejemplo@gmail.com / 123456) para explorar el dashboard.</p>
+          <p class="text-sm text-surface-600">Usa las credenciales demo (<strong>ejemplo@gmail.com / 123456</strong>) para explorar el dashboard.</p>
         </div>
 
         <form class="space-y-4" [formGroup]="loginForm" (ngSubmit)="onSubmit()">

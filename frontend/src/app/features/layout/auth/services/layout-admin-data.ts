@@ -15,7 +15,10 @@ export class LayoutAdminData {
     {
       label: 'Productos',
       icon: 'pi pi-fw pi-box',
-      routerLink: '/admin/products'
+      items: [
+        { label: 'Listado', icon: 'pi pi-list', routerLink: '/admin/products' },
+        { label: 'Product Settings', icon: 'pi pi-cog', routerLink: '/admin/product-settings' },
+      ]
     },
     {
       label: 'Usuarios',

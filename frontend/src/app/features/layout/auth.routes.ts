@@ -19,6 +19,10 @@ const authRoutes: Routes = [
         loadComponent: () => import('../products/pages/product-list/product-list')
       },
       {
+        path: 'product-settings',
+        loadComponent: () => import('../product-settings/pages/product-settings/product-settings')
+      },
+      {
         path: 'users',
         loadComponent: () => import('../users/pages/users/users')
       },
