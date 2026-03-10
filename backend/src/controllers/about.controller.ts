@@ -1,24 +1,21 @@
-import { Request, Response } from 'express';
-import { autenticate } from '../middleware/auth.middleware.js'
+import { Request, Response, NextFunction } from 'express';
 
 const aboutController = {
-    getAbout: (req: Request, res: Response) => {
-        res.json({
-            message: 'This is the about page of the backend!',
-            username: 'Paul Joseph'
+    getAbout: (_req: Request, res: Response, _next: NextFunction) => {
+        res.status(200).json({
+            success: true,
+            message: 'About info',
+            data: { username: 'Paul Joseph' }
         });
     },
-    createAbout: (req: Request, res: Response) => {
-        // Implement logic here
-        res.json({ message: "POST request received for about page" });
+    createAbout: (_req: Request, res: Response, _next: NextFunction) => {
+        res.status(200).json({ success: true, message: "POST about" });
     },
-    updateAbout: (req: Request, res: Response) => {
-        // Implement logic here
-        res.json({ message: "PUT/PATCH request received for about page" });
+    updateAbout: (_req: Request, res: Response, _next: NextFunction) => {
+        res.status(200).json({ success: true, message: "PUT/PATCH about" });
     },
-    deleteAbout: (req: Request, res: Response) => {
-        // Implement logic here
-        res.json({ message: "DELETE request received for about page" });
+    deleteAbout: (_req: Request, res: Response, _next: NextFunction) => {
+        res.status(200).json({ success: true, message: "DELETE about" });
     }
 }
 

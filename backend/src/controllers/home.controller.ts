@@ -1,23 +1,17 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 
 const homeController = {
-    getHome: (req: Request, res: Response) => {
-        res.json({
-            message: "GET request received for home page",
-            username: "Paul Joseph"
-        });
+    getHome: (_req: Request, res: Response, _next: NextFunction) => {
+        res.status(200).json({ success: true, message: "GET home", data: { username: "Paul Joseph" } });
     },
-    createHome: (req: Request, res: Response) => {
-        // Implement logic here
-        res.json({ message: "POST request received for home page" });
+    createHome: (_req: Request, res: Response, _next: NextFunction) => {
+        res.status(200).json({ success: true, message: "POST home" });
     },
-    updateHome: (req: Request, res: Response) => {
-        // Implement logic here
-        res.json({ message: "PUT/PATCH request received for home page" });
+    updateHome: (_req: Request, res: Response, _next: NextFunction) => {
+        res.status(200).json({ success: true, message: "PUT/PATCH home" });
     },
-    deleteHome: (req: Request, res: Response) => {
-        // Implement logic here
-        res.json({ message: "DELETE request received for home page" });
+    deleteHome: (_req: Request, res: Response, _next: NextFunction) => {
+        res.status(200).json({ success: true, message: "DELETE home" });
     }
 };
 

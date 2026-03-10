@@ -1,55 +1,52 @@
-import { Request, Response } from 'express'
+import { Request, Response, NextFunction } from 'express'
 import * as ProductService from '../services/product.service.js';
 
 const productController = {
-    getProducts: async (req: Request, res: Response) => {
+    getProducts: async (_req: Request, res: Response, next: NextFunction) => {
         try {
             const products = await ProductService.getProducts();
-            res.status(200).json(products);
+            res.status(200).json({ success: true, message: 'Productos obtenidos', data: products });
         } catch (err)  {
-            res.status(500).json({ message: "Error al obtener los productos", err });
+            next(err);
         }
     },
-    getProductById: async (req: Request, res: Response) => {
+    getProductById: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const { id } = req.params;
             if (typeof id !== 'string') {
-                return res.status(400).json({ message: 'El ID proporcionado no es válido' });
+                return res.status(400).json({ success: false, message: 'El ID proporcionado no es válido' });
             }
             
             const product = await ProductService.getProductById(id);
 
             if (!product) {
-                return res.status(404).json({ message: 'Producto no encontrado' });
+                return res.status(404).json({ success: false, message: 'Producto no encontrado' });
             }
-            res.status(200).json({ product });
+            res.status(200).json({ success: true, message: 'Producto obtenido', data: product });
         } catch (err) {
-            if ((err as any).kind === 'ObjectId') {
-                return res.status(400).json({ message: 'Formato de ID inválido' });
-            }
-            res.status(500).json({ message: `Error al obtener el producto`, err });
+            next(err);
         }
     },
-    createProduct: async (req: Request, res: Response) => {
+    createProduct: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const product = await ProductService.createProduct(req.body);
-            res.status(201).json(product);
+            res.status(201).json({ success: true, message: 'Producto creado', data: product });
         } catch (err) {
             if ((err as any).code === 11000) {
-                return res.status(400).json({ message: 'El SKU ya existe' });
+                return res.status(400).json({ success: false, message: 'El SKU ya existe' });
             }
-            res.status(500).json({message: 'Error al crear el producto', err})
+            next(err);
         }
     },
-    updateProduct: async (req: Request, res: Response) => {
+    updateProduct: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const product = await ProductService.updateProduct(req.body.id, req.body.product);
             if (!product) {
-                res.status(404).json({ message: 'Producto no encontrado' });
+                return res.status(404).json({ success: false, message: 'Producto no encontrado' });
             }
-            res.status(200).json(product);
+            res.status(200).json({ success: true, message: 'Producto actualizado', data: product });
         } catch (err) {
-            res.status(500).json({message: 'Error al acualizar el producto', err})
+            next(err);
         }
     }
 };
