@@ -2,6 +2,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { tap } from 'rxjs/operators';
 import { ICredentials } from '../../interfaces/i-credentials';
 import { AuthApi, LoginResponse } from './auth-api';
+import { Router } from '@angular/router';
 
 export interface AuthUser {
   id: string;
@@ -16,6 +17,7 @@ export interface AuthUser {
 export class Auth {
   private readonly authApi = inject(AuthApi);
   private readonly userKey = 'auth_user';
+  private readonly router = inject(Router);
 
   private user = signal<AuthUser | null>(null);
 

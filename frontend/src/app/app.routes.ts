@@ -20,6 +20,7 @@ export const routes: Routes = [
   },
   {
     path: 'admin',
-    loadChildren: () => import('./features/layout/auth.routes')
+    loadChildren: () => import('./features/layout/auth.routes'),
+    canActivateChild: [() => import('./@core/guards/auth-guard')]
   },
 ];

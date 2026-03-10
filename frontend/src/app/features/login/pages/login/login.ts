@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Auth } from '../../../../@core/services/auth/auth';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -97,6 +97,7 @@ import { TagModule } from 'primeng/tag';
 export default class Login {
   private readonly auth = inject(Auth);
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
 
   constructor() {  }
 
@@ -114,9 +115,15 @@ export default class Login {
       email: raw.username ?? '',
       password: raw.password ?? ''
     };
-    console.log(credentials);
 
-    this.auth.authenticate(credentials);
+    this.auth.authenticate(credentials).subscribe({
+      next: () => {
+        this.router.navigate(['/admin']);
+      },
+      error: () => {
+        console.log('error sdaklfña')
+      }
+    });
   }
 
 }
