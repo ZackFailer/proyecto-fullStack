@@ -45,7 +45,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
             maxAge: 60 * 60 * 1000,
         });
 
-        res.status(200).json({ success: true, message: 'Login exitoso', data: { token, user: payload } });
+        res.status(200).json({ success: true, message: 'Login exitoso', data: { user: payload } });
     } catch (err) {
         return next(err);
     }

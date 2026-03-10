@@ -4,15 +4,12 @@ import { AuthRequest, AuthUser } from '../models/auth.model.js';
 
 export const autenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
+    const cookieToken = (req as any).cookies?.token as string | undefined;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+    const token = cookieToken || bearerToken ;
 
-    if (!authHeader) {
-        res.status(401).json({ success: false, message: 'No se proporcionó token' });
-        return;
-    }
-
-    const token = authHeader.split(' ')[1];
     if (!token) {
-        res.status(401).json({ success: false, message: 'Token mal formado' });
+        res.status(401).json({ success: false, message: 'No se proporcionó token' });
         return;
     }
 

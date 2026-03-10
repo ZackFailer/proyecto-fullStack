@@ -13,7 +13,8 @@ connectDB();
 
 app.use(morgan("dev"));
 app.use(cookieParser());
-app.use(cors());
+const allowedOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:4200";
+app.use(cors({ origin: allowedOrigin, credentials: true }));
 app.use(express.json());
 
 app.use("/api", routes);
