@@ -121,7 +121,7 @@ export default class Login {
         this.router.navigate(['/admin']);
       },
       error: () => {
-        console.log('error sdaklfña')
+        console.log('error al navegar')
       }
     });
   }
