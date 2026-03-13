@@ -33,6 +33,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
             id: user._id?.toString(),
             role: user.role,
             clientId: user.clientId ? user.clientId.toString() : null,
+            tenantId: user.clientId ? user.clientId.toString() : null,
             email: user.email,
         };
 

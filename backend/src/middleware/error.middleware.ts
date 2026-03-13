@@ -1,10 +1,15 @@
 import { NextFunction, Request, Response } from 'express';
-import { ServiceError } from '../services/user.service.js';
+
+interface AppError extends Error {
+  status?: number;
+  code?: string | number;
+  details?: unknown;
+}
 
 export const errorHandler = (err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  const error = err as ServiceError & { status?: number; code?: string; details?: unknown };
+  const error = err as AppError;
 
-  if ((error as any)?.code === 11000) {
+  if (error?.code === 11000) {
     return res.status(409).json({ success: false, message: 'Recurso duplicado', code: 'DUPLICATE_KEY' });
   }
 

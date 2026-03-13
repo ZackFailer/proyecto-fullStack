@@ -7,7 +7,7 @@ import {
   deleteUserHandler,
 } from '../controllers/user.controller.js';
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 router.get('/', listUsersHandler);
 router.get('/:id', getUserHandler);

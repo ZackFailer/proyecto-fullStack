@@ -15,15 +15,28 @@ const resolveClientId = (req: AuthRequest, fallback?: string | null): string | n
   const authUser = req.user;
   if (!authUser) return fallback;
 
+  const routeTenant = typeof req.params.tenantId === 'string' ? req.params.tenantId : undefined;
+  const queryTenant = typeof req.query.tenantId === 'string' ? req.query.tenantId : undefined;
+  const bodyTenant = typeof req.body?.tenantId === 'string' ? req.body.tenantId : undefined;
+  const bodyClient = typeof req.body?.clientId === 'string' ? req.body.clientId : undefined;
+  const queryClient = typeof req.query?.clientId === 'string' ? req.query.clientId : undefined;
+
   // No super-admin: fuerza el clientId del token
   if (authUser.role !== 'super-admin') {
-    return authUser.clientId ?? null;
+    return authUser.tenantId ?? authUser.clientId ?? null;
   }
 
   // Super-admin: permite enviar clientId (query/body) o usar el suyo
-  const bodyClient = req.body?.clientId as string | undefined;
-  const queryClient = req.query?.clientId as string | undefined;
-  return queryClient ?? bodyClient ?? authUser.clientId ?? fallback;
+  return (
+    routeTenant ??
+    queryTenant ??
+    bodyTenant ??
+    queryClient ??
+    bodyClient ??
+    authUser.tenantId ??
+    authUser.clientId ??
+    fallback
+  );
 };
 
 export const createUserHandler = async (req: AuthRequest, res: Response, next: NextFunction) => {

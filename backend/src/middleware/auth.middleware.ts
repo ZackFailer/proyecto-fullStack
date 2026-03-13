@@ -25,7 +25,8 @@ export const autenticate = (req: AuthRequest, res: Response, next: NextFunction)
         const normalized: AuthUser = {
             id: decoded.id,
             role: decoded.role,
-            clientId: decoded.clientId ?? null,
+            clientId: decoded.clientId ?? decoded.tenantId ?? null,
+            tenantId: decoded.tenantId ?? decoded.clientId ?? null,
         };
         if (decoded.email !== undefined) {
             normalized.email = decoded.email;
