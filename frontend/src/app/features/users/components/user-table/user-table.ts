@@ -133,13 +133,15 @@ export class UserTable {
   statusSeverity(status: UserStatus) {
     if (status === 'active') return 'success';
     if (status === 'suspended') return 'danger';
+    if (status === 'invited') return 'warn';
     return 'warn';
   }
 
   statusLabel(status: UserStatus): string {
     if (status === 'active') return 'Activo';
     if (status === 'suspended') return 'Suspendido';
-    return 'Pendiente';
+    if (status === 'invited') return 'Invitado';
+    return 'Eliminado';
   }
 
   onPageChange(event: TablePageEvent) {

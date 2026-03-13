@@ -6,11 +6,8 @@ import {
   updateUserHandler,
   deleteUserHandler,
 } from '../controllers/user.controller.js';
-import { autenticate } from '../middleware/auth.middleware.js';
 
 const router = Router();
-
-router.use(autenticate);
 
 router.get('/', listUsersHandler);
 router.get('/:id', getUserHandler);

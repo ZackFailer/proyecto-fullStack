@@ -6,7 +6,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { UserFilters } from '../../components/user-filters/user-filters';
 import { UserTable } from '../../components/user-table/user-table';
-import { UserModal } from '../../components/user-modal/user-modal';
+import UserModal from '../../components/user-modal/user-modal';
 import { UserDTO, UserRole, UserStatus } from '../../interfaces/user';
 import { UserFormValue, UserStore } from '../../services/user-store';
 
@@ -144,7 +144,7 @@ export default class UsersPage {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: user => {
-          const label = `${user.firstName} ${user.lastName}`.trim() || user.email;
+          const label = `${user.fullName}` || user.email;
           this.messages.add({
             severity: 'success',
             summary: isEdit ? 'Usuario actualizado' : 'Usuario creado',
@@ -162,7 +162,7 @@ export default class UsersPage {
     const action = user.status === 'active' ? 'Suspender' : 'Reactivar';
     this.confirmation.confirm({
       header: 'Confirmar estado',
-      message: `${action} a ${user.firstName} ${user.lastName}?`,
+      message: `${action} a ${user.fullName}?`,
       icon: 'pi pi-exclamation-triangle',
       acceptLabel: action,
       rejectLabel: 'Cancelar',
@@ -172,7 +172,7 @@ export default class UsersPage {
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: updated => {
-              const detail = `${updated.firstName} ${updated.lastName} → ${this.statusLabel(updated.status)}`;
+              const detail = `${updated.fullName} → ${this.statusLabel(updated.status)}`;
               this.messages.add({ severity: 'info', summary: 'Estado actualizado', detail });
             },
             error: () => this.messages.add({ severity: 'error', summary: 'Error', detail: 'No se pudo actualizar el estado' })
@@ -192,6 +192,7 @@ export default class UsersPage {
   private statusLabel(status: UserStatus): string {
     if (status === 'active') return 'Activo';
     if (status === 'suspended') return 'Suspendido';
-    return 'Pendiente';
+    if (status === 'invited') return 'Invitado';
+    return 'Eliminado';
   }
 }

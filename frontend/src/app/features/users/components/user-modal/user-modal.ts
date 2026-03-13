@@ -85,7 +85,7 @@ interface Option<T> {
               placeholder="ejemplo@gmail.com"
             />
             @if (form.controls.email.invalid && form.controls.email.touched) {
-              <span class="text-xs text-red-500">Usa un correo válido (5-60 caracteres)</span>
+              <span class="text-xs text-red-500">Usa un correo valido (5-60 caracteres)</span>
             }
           </label>
 
@@ -98,15 +98,15 @@ interface Option<T> {
                 [feedback]="true"
                 [toggleMask]="true"
                 fluid
-                placeholder="Mínimo 12 caracteres"
-                [promptLabel]="'Define una contraseña fuerte'"
-                [weakLabel]="'Débil'"
+                placeholder="Minimo 12 caracteres"
+                [promptLabel]="'Define una contrasena fuerte'"
+                [weakLabel]="'Debil'"
                 [mediumLabel]="'Media'"
                 [strongLabel]="'Fuerte'"
               />
               @if (form.controls.password.invalid && form.controls.password.touched) {
                 <span class="text-xs text-red-500"
-                  >Mínimo 12 caracteres, incluye mayúsculas, minúsculas, número y símbolo.</span
+                  >Minimo 12 caracteres, incluye mayusculas, minusculas, numero y simbolo.</span
                 >
               }
             </div>
@@ -143,7 +143,7 @@ interface Option<T> {
         </div>
 
         <label class="flex flex-col gap-2 text-sm text-surface-700" for="phone">
-          Teléfono (opcional)
+          Telefono (opcional)
           <input
             id="phone"
             pInputText
@@ -160,7 +160,7 @@ interface Option<T> {
             {{
               isEdit()
                 ? 'Edita rol, estado o perfil sin salir de la vista.'
-                : 'El usuario recibirá invitación con estado activo o pendiente.'
+                : 'El usuario se crea activo o con invitacion pendiente.'
             }}
           </div>
           <div class="flex gap-2">
@@ -191,7 +191,7 @@ interface Option<T> {
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class UserModal {
+export default class UserModal {
   readonly visible = input(false);
   readonly user = input<UserDTO | null>(null);
   readonly saving = input(false);
@@ -218,7 +218,6 @@ export class UserModal {
 
   readonly isEdit = computed(() => Boolean(this.user()));
 
-  // Tracks the last user/mode used to fill the form to avoid unintended resets
   private formStateKey: string | null = null;
 
   constructor() {
@@ -227,7 +226,6 @@ export class UserModal {
       const current = this.user();
       const nextKey = isVisible ? (current?.id ?? '__create__') : null;
 
-      // Only re-sync when the modal opens with a different user/mode.
       if (nextKey === this.formStateKey) {
         return;
       }
@@ -239,17 +237,18 @@ export class UserModal {
       }
 
       if (current) {
+        const { firstName, lastName } = splitFullName(current.fullName);
         this.form.reset(
           {
-            firstName: current.firstName,
-            lastName: current.lastName,
+            firstName,
+            lastName,
             email: current.email,
             role: current.role,
             status: current.status,
             phone: current.phone ?? null,
             password: '',
           },
-          { emitEvent: false },
+          { emitEvent: false }
         );
         this.form.controls.email.disable({ emitEvent: false });
         this.form.controls.password.disable({ emitEvent: false });
@@ -264,7 +263,7 @@ export class UserModal {
             phone: null,
             password: '',
           },
-          { emitEvent: false },
+          { emitEvent: false }
         );
         this.form.controls.email.enable({ emitEvent: false });
         this.form.controls.password.enable({ emitEvent: false });
@@ -280,6 +279,7 @@ export class UserModal {
 
   submit() {
     if (this.form.invalid) {
+      console.log(this.form);
       this.form.markAllAsTouched();
       return;
     }
@@ -315,4 +315,21 @@ function passwordStrengthValidator(control: AbstractControl) {
   return hasMinLength && hasUpper && hasLower && hasNumber && hasSymbol
     ? null
     : { weakPassword: true };
+}
+
+function splitFullName(fullName: string): { firstName: string; lastName: string } {
+  const trimmed = fullName.trim();
+  if (!trimmed) {
+    return { firstName: '', lastName: '' };
+  }
+
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: '' };
+  }
+
+  return {
+    firstName: parts.slice(0, -1).join(' '),
+    lastName: parts[parts.length - 1],
+  };
 }

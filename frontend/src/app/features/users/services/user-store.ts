@@ -12,8 +12,16 @@ import {
   UserStatus,
 } from '../interfaces/user';
 
-export interface UserFormValue extends CreateUserPayload {
+export interface UserFormValue {
   id?: string;
+  email: string;
+  password?: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  status?: UserStatus;
+  phone?: string | null;
+  locale?: string | null;
 }
 
 @Injectable({
@@ -32,21 +40,22 @@ export class UserStore {
   readonly selectedUser = signal<UserDTO | null>(null);
 
   readonly roleOptions = computed(() => ([
+    { label: 'Super Admin', value: 'super-admin' as UserRole },
     { label: 'Admin', value: 'admin' as UserRole },
-    { label: 'Manager', value: 'manager' as UserRole },
+    { label: 'Operador', value: 'operator' as UserRole },
     { label: 'Viewer', value: 'viewer' as UserRole },
   ]));
 
   readonly statusOptions = computed(() => ([
     { label: 'Activo', value: 'active' as UserStatus },
     { label: 'Suspendido', value: 'suspended' as UserStatus },
-    { label: 'Pendiente', value: 'pending_invite' as UserStatus },
+    { label: 'Invitado', value: 'invited' as UserStatus },
+    { label: 'Eliminado', value: 'deleted' as UserStatus },
   ]));
 
   readonly tableUsers = computed(() =>
     this.users().map(user => ({
-      ...user,
-      fullName: `${user.firstName} ${user.lastName}`.trim() || user.email,
+      ...user
     }))
   );
 
@@ -54,7 +63,7 @@ export class UserStore {
     const list = this.users();
     const active = list.filter(user => user.status === 'active').length;
     const suspended = list.filter(user => user.status === 'suspended').length;
-    const pending = list.filter(user => user.status === 'pending_invite').length;
+    const pending = list.filter(user => user.status === 'invited').length;
     return {
       total: this.meta().total,
       active,
@@ -68,7 +77,7 @@ export class UserStore {
       // Automatically refresh when filters change
       this.filters();
       this.load();
-    }, { allowSignalWrites: true });
+    },);
   }
 
   load(): void {
@@ -79,11 +88,18 @@ export class UserStore {
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.loading.set(false)),
       )
-      .subscribe(response => {
-        this.users.set(response.data);
-        if (response.meta) {
-          this.meta.set(response.meta);
-        }
+      .subscribe({
+        next: (response) => {
+          this.users.set(response.data);
+
+          if (response.meta) {
+            this.meta.set(response.meta);
+          }
+        },
+        error: () => {
+          this.users.set([]);
+        },
+        complete: () => undefined,
       });
   }
 
@@ -164,24 +180,22 @@ export class UserStore {
   private toPayload(value: UserFormValue, isEdit: boolean): CreateUserPayload | UpdateUserPayload {
     if (isEdit) {
       const body: UpdateUserPayload = {
-        firstName: value.firstName,
-        lastName: value.lastName,
+        fullName: `${value.firstName} ${value.lastName}`.trim(),
         role: value.role,
         status: value.status,
         phone: value.phone ?? undefined,
-        avatarUrl: value.avatarUrl ?? undefined,
+        locale: value.locale ?? undefined,
       };
       return body;
     }
 
     const payload: CreateUserPayload = {
       email: value.email,
-      firstName: value.firstName,
-      lastName: value.lastName,
+      fullName: `${value.firstName} ${value.lastName}`.trim(),
       role: value.role,
       status: value.status ?? 'active',
       phone: value.phone ?? undefined,
-      avatarUrl: value.avatarUrl ?? undefined,
+      locale: value.locale ?? undefined,
     };
 
     if (value.password) {

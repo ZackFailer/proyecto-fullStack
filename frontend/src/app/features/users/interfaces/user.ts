@@ -1,15 +1,15 @@
-export type UserRole = 'admin' | 'manager' | 'viewer';
-export type UserStatus = 'active' | 'suspended' | 'pending_invite';
+export type UserRole = 'super-admin' | 'admin' | 'operator' | 'viewer';
+export type UserStatus = 'active' | 'invited' | 'suspended' | 'deleted';
 
 export interface UserDTO {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   role: UserRole;
   status: UserStatus;
+  clientId?: string | null;
   phone?: string | null;
-  avatarUrl?: string | null;
+  locale?: string | null;
   lastLoginAt?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -32,21 +32,19 @@ export interface UserQuery {
 export interface CreateUserPayload {
   email: string;
   password?: string;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   role: UserRole;
   phone?: string | null;
   status?: UserStatus;
-  avatarUrl?: string | null;
+  locale?: string | null;
 }
 
 export interface UpdateUserPayload {
-  firstName?: string;
-  lastName?: string;
+  fullName?: string;
   role?: UserRole;
   status?: UserStatus;
   phone?: string | null;
-  avatarUrl?: string | null;
+  locale?: string | null;
 }
 
 export interface PasswordChangePayload {
@@ -60,3 +58,16 @@ export interface ApiEnvelope<T, M = unknown> {
 }
 
 export interface UserListResponse extends ApiEnvelope<UserDTO[], UserMeta> {}
+
+export interface BackendEnvelope<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+export interface BackendUserListData {
+  items: UserDTO[];
+  page: number;
+  limit: number;
+  total: number;
+}

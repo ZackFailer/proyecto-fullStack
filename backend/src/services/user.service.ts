@@ -73,8 +73,18 @@ const toObjectIdOrNull = (value?: string | null): Types.ObjectId | null | undefi
 };
 
 const sanitizeUser = (user: IUser): IUser => {
-  const { passwordHash, ...rest } = user;
-  return rest as IUser;
+  const userRecord = user as unknown as Record<string, unknown>;
+  const sanitized: Record<string, unknown> = { ...userRecord };
+
+  const rawId = sanitized.id ?? sanitized._id;
+  if (rawId !== undefined && rawId !== null) {
+    sanitized.id = typeof rawId === 'string' ? rawId : String(rawId);
+  }
+
+  delete sanitized._id;
+  delete sanitized.passwordHash;
+
+  return sanitized as unknown as IUser;
 };
 
 const ensureAnotherAdminExists = async (clientId: Types.ObjectId | null, excludeUserId: string) => {
