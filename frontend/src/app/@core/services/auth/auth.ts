@@ -46,6 +46,10 @@ export class Auth {
     return !!this.user();
   }
 
+  public currentUser() {
+    return this.user();
+  }
+
   private loadFromStorage() {
     const storedUser = sessionStorage.getItem(this.userKey)
     if (storedUser) {
@@ -55,6 +59,10 @@ export class Auth {
         this.user.set(null);
       }
     }
+  }
+
+  isSuperAdmin(): boolean {
+    return this.user()?.role === 'super-admin';
   }
 
 }
