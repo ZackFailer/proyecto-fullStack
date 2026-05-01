@@ -5,6 +5,8 @@ import { UserApi } from './user-api';
 import { Auth } from '../../../../@core/services/auth/auth';
 import {
   CreateUserPayload,
+  PasswordChangeRequestDTO,
+  PasswordChangeRequestPayload,
   UpdateUserPayload,
   UserDTO,
   UserMeta,
@@ -17,6 +19,7 @@ export interface UserFormValue {
   id?: string;
   email: string;
   password?: string;
+  confirmPassword?: string;
   firstName: string;
   lastName: string;
   role: UserRole;
@@ -36,6 +39,8 @@ export class UserStore {
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly modalOpen = signal(false);
+  readonly privilegedPasswordModalOpen = signal(false);
+  readonly passwordRequestModalOpen = signal(false);
   readonly users = signal<UserDTO[]>([]);
   readonly meta = signal<UserMeta>({ page: 1, pageSize: 10, total: 0 });
   readonly filters = signal<UserQuery>({ search: '', role: '', status: '', page: 1, pageSize: 10 });
@@ -50,9 +55,10 @@ export class UserStore {
     if (this.isSuperAdminTenantView()) return true;
     return this.auth.currentUser()?.role === 'admin';
   });
-  readonly showRoleFilter = computed(() => !this.isGlobalScope());
+readonly showRoleFilter = computed(() => !this.isGlobalScope());
   readonly showCreate = computed(() => this.canMutate());
   readonly showActions = computed(() => this.canMutate());
+  readonly currentUserRole = computed(() => this.auth.currentUser()?.role ?? 'admin');
 
   readonly roleOptions = computed(() => {
     if (this.isGlobalScope()) {
@@ -223,6 +229,59 @@ export class UserStore {
     return this.api.changeStatus(user.id, nextStatus, this.scopedTenantId()).pipe(
       map(res => res.data),
       tap(updated => this.upsertUser(updated)),
+      finalize(() => this.saving.set(false)),
+      takeUntilDestroyed(this.destroyRef),
+    );
+  }
+
+  openPrivilegedPasswordChange(user: UserDTO): void {
+    if (!this.canMutate()) return;
+    this.selectedUser.set(user);
+    this.privilegedPasswordModalOpen.set(true);
+  }
+
+  closePrivilegedPasswordModal(): void {
+    this.privilegedPasswordModalOpen.set(false);
+  }
+
+  changePasswordPrivileged(
+    userId: string,
+    payload: { adminPassword?: string; newPassword: string }
+  ): Observable<UserDTO> {
+    this.saving.set(true);
+    const tenantId = this.scopedTenantId();
+
+    return this.api.privilegedChangePassword(userId, payload, tenantId).pipe(
+      map(res => res.data),
+      tap(() => {
+        this.privilegedPasswordModalOpen.set(false);
+      }),
+      finalize(() => this.saving.set(false)),
+      takeUntilDestroyed(this.destroyRef),
+    );
+  }
+
+  openPasswordRequestModal(user: UserDTO): void {
+    this.selectedUser.set(user);
+    this.passwordRequestModalOpen.set(true);
+  }
+
+  closePasswordRequestModal(): void {
+    this.passwordRequestModalOpen.set(false);
+  }
+
+  requestPasswordChange(
+    targetUserId: string,
+    payload: PasswordChangeRequestPayload
+  ): Observable<PasswordChangeRequestDTO> {
+    this.saving.set(true);
+    const tenantId = this.scopedTenantId();
+
+    return this.api.addPasswordChangeRequest({ targetUserId, reason: payload.reason }, tenantId).pipe(
+      map(res => res.data),
+      tap(() => {
+        this.passwordRequestModalOpen.set(false);
+      }),
       finalize(() => this.saving.set(false)),
       takeUntilDestroyed(this.destroyRef),
     );

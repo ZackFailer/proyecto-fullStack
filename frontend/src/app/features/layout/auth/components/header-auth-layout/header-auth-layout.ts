@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { MenuModule } from 'primeng/menu';
 import { Router } from '@angular/router';
@@ -6,13 +6,18 @@ import { LayoutAdminData } from '../../services/layout-admin-data';
 import { TenantContext } from '../../../../../@core/services/tenant/tenant-context';
 import { TenantApi } from '../../../../super-admin/tenants/services/tenant-api';
 import { Auth } from '../../../../../@core/services/auth/auth';
+import { AuthApi } from '../../../../../@core/services/auth/auth-api';
 import { take } from 'rxjs';
-import { MenuItem } from 'primeng/api';
+import { MenuItem, MessageService } from 'primeng/api';
+import { PasswordChangeModal } from '../../../../super-admin/users/components/password-change-modal/password-change-modal';
+import { ToastModule } from 'primeng/toast';
 
 @Component({
   selector: 'app-header-auth-layout',
-  imports: [ButtonModule, MenuModule],
+  imports: [ButtonModule, MenuModule, PasswordChangeModal, ToastModule],
+  providers: [MessageService],
   template: `
+    <p-toast></p-toast>
     <div class="header-bar">
       <div class="brand-wrap">
         <div class="brand">
@@ -56,6 +61,12 @@ import { MenuItem } from 'primeng/api';
         />
       </div>
     </div>
+    <app-password-change-modal
+      [visible]="showPasswordChangeModal()"
+      [saving]="savingPasswordChange()"
+      (submitted)="onPasswordChangeSubmitted($event)"
+      (canceled)="onPasswordChangeCanceled()"
+    />
   `,
   styles: `
     :host {
@@ -181,11 +192,20 @@ export class HeaderAuthLayout {
   private readonly tenantContext = inject(TenantContext);
   private readonly tenantApi = inject(TenantApi);
   private readonly auth = inject(Auth);
+  private readonly authApi = inject(AuthApi);
+  private readonly messageService = inject(MessageService);
 
   protected readonly isTenantView = this.layoutData.isTenantView;
   protected readonly tenantViewLabel = this.layoutData.tenantViewLabel;
+  protected readonly showPasswordChangeModal = signal(false);
+  protected readonly savingPasswordChange = signal(false);
 
   protected readonly menuItems: MenuItem[] = [
+    {
+      label: 'Cambiar contraseña',
+      icon: 'pi pi-key',
+      command: () => this.showPasswordChangeModal.set(true),
+    },
     {
       label: 'Cerrar sesión',
       icon: 'pi pi-sign-out',
@@ -222,8 +242,52 @@ export class HeaderAuthLayout {
     });
   }
 
-  protected exitTenantView(): void {
+protected exitTenantView(): void {
     this.tenantContext.clear();
     this.router.navigate(['/admin/tenants']);
+  }
+
+  protected onPasswordChangeCanceled(): void {
+    this.showPasswordChangeModal.set(false);
+  }
+
+  protected onPasswordChangeSubmitted(event: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): void {
+    this.savingPasswordChange.set(true);
+
+    this.authApi.changePassword(event).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Éxito',
+            detail: response.message,
+            life: 3000,
+          });
+          this.showPasswordChangeModal.set(false);
+        } else {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: response.message,
+            life: 5000,
+          });
+        }
+      },
+      error: (err: { message?: string }) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: err?.message ?? 'Error al cambiar la contraseña',
+          life: 5000,
+        });
+      },
+      complete: () => {
+        this.savingPasswordChange.set(false);
+      },
+    });
   }
 }

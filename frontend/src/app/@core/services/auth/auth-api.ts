@@ -10,6 +10,18 @@ export interface LoginResponse {
   data: { token: string; user: AuthUser } | null;
 }
 
+export interface RefreshResponse {
+  success: boolean;
+  message: string;
+  data: { user: AuthUser } | null;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -21,8 +33,19 @@ export class AuthApi {
     return this.http.post<LoginResponse>(`${this.apiUrl}/login`, credentials, { withCredentials: true });
   }
 
-  constructor() { }
+  refresh(): Observable<RefreshResponse> {
+    return this.http.post<RefreshResponse>(`${this.apiUrl}/refresh`, {}, { withCredentials: true });
+  }
 
+  logout(): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(`${this.apiUrl}/logout`, {}, { withCredentials: true });
+  }
 
-
+  changePassword(payload: ChangePasswordRequest): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(
+      `${this.apiUrl}/change-password`,
+      payload,
+      { withCredentials: true }
+    );
+  }
 }

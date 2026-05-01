@@ -45,6 +45,19 @@ export class Auth {
   }
 
   public logout(): void {
+    this.authApi.logout().subscribe({
+      next: () => {
+        // Backend logout successful
+        this.performLocalLogout();
+      },
+      error: () => {
+        // Fallback: if backend logout fails, still clear local session
+        this.performLocalLogout();
+      }
+    });
+  }
+
+  private performLocalLogout(): void {
     this.clearSession();
     this.tenantContext.clear();
     this.router.navigate(['/login']);
@@ -56,6 +69,11 @@ export class Auth {
 
   public currentUser() {
     return this.user();
+  }
+
+  public updateUser(user: AuthUser): void {
+    this.user.set(user);
+    sessionStorage.setItem(this.userKey, JSON.stringify(user));
   }
 
   private loadFromStorage() {

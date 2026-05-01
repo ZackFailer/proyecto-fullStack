@@ -53,6 +53,11 @@ export interface PasswordChangePayload {
   newPassword: string;
 }
 
+export interface PrivilegedPasswordPayload {
+  adminPassword?: string;
+  newPassword: string;
+}
+
 export interface ApiEnvelope<T, M = unknown> {
   data: T;
   meta?: M;
@@ -70,5 +75,35 @@ export interface BackendUserListData {
   items: UserDTO[];
   page: number;
   limit: number;
+  total: number;
+}
+
+// Password Change Request types
+export type PasswordChangeRequestStatus = 'pending' | 'resolved';
+
+export interface PasswordChangeRequestDTO {
+  id: string;
+  targetUserId: string;
+  targetUserName?: string;
+  targetUserEmail?: string;
+  requestedById: string;
+  requestedByName?: string;
+  reason?: string;
+  status: PasswordChangeRequestStatus;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface PasswordChangeRequestPayload {
+  targetUserId: string;
+  reason?: string;
+}
+
+export interface ResolvePasswordChangeRequestPayload {
+  newPassword: string;
+}
+
+export interface ApiListResponse<T> {
+  data: T[];
   total: number;
 }

@@ -33,6 +33,10 @@ const SuperAdminLayout: Routes = [
         path: 'history',
         loadComponent: () => import('../super-admin/history/pages/history/history')
       },
+      {
+        path: 'login-attempts',
+        loadComponent: () => import('../super-admin/login-attempts/pages/login-attempts/login-attempts')
+      },
       // Tenant-scoped routes (when super-admin is viewing a specific tenant)
       {
         path: ':tenantId',

@@ -3,9 +3,14 @@ import { inject, Injectable } from '@angular/core';
 import { catchError, map, Observable, of } from 'rxjs';
 import {
   ApiEnvelope,
+  ApiListResponse,
   BackendEnvelope,
   BackendUserListData,
   CreateUserPayload,
+  PasswordChangeRequestDTO,
+  PasswordChangeRequestPayload,
+  PrivilegedPasswordPayload,
+  ResolvePasswordChangeRequestPayload,
   UpdateUserPayload,
   UserDTO,
   UserListResponse,
@@ -137,13 +142,77 @@ export class UserApi {
       );
   }
 
-  changeStatus(id: string, status: UserStatus, tenantId?: string | null): Observable<ApiEnvelope<UserDTO>> {
+changeStatus(id: string, status: UserStatus, tenantId?: string | null): Observable<ApiEnvelope<UserDTO>> {
     const apiUrl = this.resolveApiUrl(tenantId);
     return this.http
       .patch<BackendEnvelope<UserDTO>>(`${apiUrl}/${id}`, { status })
       .pipe(
         map((response) => ({ data: this.normalizeUser(response.data) })),
         catchError(() => this.mockUpdate(id, { status }))
+      );
+  }
+
+  privilegedChangePassword(id: string, payload: PrivilegedPasswordPayload, tenantId?: string | null): Observable<ApiEnvelope<UserDTO>> {
+    const apiUrl = this.resolveApiUrl(tenantId);
+    return this.http
+      .post<BackendEnvelope<UserDTO>>(`${apiUrl}/${id}/change-password`, payload)
+      .pipe(
+        map((response) => ({ data: this.normalizeUser(response.data) })),
+        catchError(() => this.mockUpdate(id, {}))
+      );
+  }
+
+  addPasswordChangeRequest(
+    payload: PasswordChangeRequestPayload,
+    tenantId?: string | null
+  ): Observable<ApiEnvelope<PasswordChangeRequestDTO>> {
+    const apiUrl = this.resolveApiUrl(tenantId);
+    return this.http
+      .post<BackendEnvelope<PasswordChangeRequestDTO>>(`${apiUrl}/password-change-requests`, payload)
+      .pipe(
+        map((response) => ({ data: response.data })),
+        catchError(() => this.mockAddPasswordChangeRequest(payload))
+      );
+  }
+
+  listPasswordChangeRequests(options?: {
+    tenantId?: string | null;
+    status?: string;
+  }): Observable<ApiListResponse<PasswordChangeRequestDTO>> {
+    const apiUrl = this.resolveApiUrl(options?.tenantId);
+    const params = new HttpParams({
+      fromObject: {
+        ...(options?.status ? { status: options.status } : {}),
+      }
+    });
+    return this.http
+      .get<BackendEnvelope<{ items: PasswordChangeRequestDTO[]; total: number }>>(
+        `${apiUrl}/password-change-requests`,
+        { params }
+      )
+      .pipe(
+        map((response) => ({
+          data: response.data.items ?? [],
+          total: response.data.total ?? 0,
+        })),
+        catchError(() => this.mockListPasswordChangeRequests(options?.status))
+      );
+  }
+
+  resolvePasswordChangeRequest(
+    requestId: string,
+    payload: ResolvePasswordChangeRequestPayload,
+    tenantId?: string | null
+  ): Observable<ApiEnvelope<PasswordChangeRequestDTO>> {
+    const apiUrl = this.resolveApiUrl(tenantId);
+    return this.http
+      .post<BackendEnvelope<PasswordChangeRequestDTO>>(
+        `${apiUrl}/password-change-requests/${requestId}/resolve`,
+        payload
+      )
+      .pipe(
+        map((response) => ({ data: response.data })),
+        catchError(() => this.mockResolvePasswordChangeRequest(requestId, payload))
       );
   }
 
@@ -234,6 +303,79 @@ export class UserApi {
 
     this.mockUsers[index] = updated;
     return of({ data: updated });
+  }
+
+  private readonly mockPasswordChangeRequests: PasswordChangeRequestDTO[] = [
+    {
+      id: 'pcr-001',
+      targetUserId: 'u-1002',
+      targetUserName: 'María Suarez',
+      targetUserEmail: 'maria.suarez@example.com',
+      requestedById: 'u-1001',
+      requestedByName: 'Alex Estrada',
+      reason: 'Usuario olvido su contraseña',
+      status: 'pending',
+      createdAt: '2025-01-15T08:30:00.000Z',
+    },
+    {
+      id: 'pcr-002',
+      targetUserId: 'u-1004',
+      targetUserName: 'Jorge Navarro',
+      targetUserEmail: 'jorge.navarro@example.com',
+      requestedById: 'u-1001',
+      requestedByName: 'Alex Estrada',
+      reason: undefined,
+      status: 'pending',
+      createdAt: '2025-01-14T14:00:00.000Z',
+    },
+  ];
+
+  private mockAddPasswordChangeRequest(
+    payload: PasswordChangeRequestPayload
+  ): Observable<ApiEnvelope<PasswordChangeRequestDTO>> {
+    const target = this.mockUsers.find(user => user.id === payload.targetUserId);
+    const now = new Date().toISOString();
+    const request: PasswordChangeRequestDTO = {
+      id: `pcr-${Date.now()}`,
+      targetUserId: payload.targetUserId,
+      targetUserName: target?.fullName,
+      targetUserEmail: target?.email,
+      requestedById: 'u-current',
+      requestedByName: 'Admin',
+      reason: payload.reason,
+      status: 'pending',
+      createdAt: now,
+    };
+
+    this.mockPasswordChangeRequests.unshift(request);
+    return of({ data: request });
+  }
+
+  private mockListPasswordChangeRequests(
+    status?: string
+  ): Observable<ApiListResponse<PasswordChangeRequestDTO>> {
+    const filtered = status
+      ? this.mockPasswordChangeRequests.filter(r => r.status === status)
+      : this.mockPasswordChangeRequests;
+    return of({ data: filtered, total: filtered.length });
+  }
+
+  private mockResolvePasswordChangeRequest(
+    requestId: string,
+    payload: ResolvePasswordChangeRequestPayload
+  ): Observable<ApiEnvelope<PasswordChangeRequestDTO>> {
+    const index = this.mockPasswordChangeRequests.findIndex(r => r.id === requestId);
+    if (index === -1) {
+      return of({ data: this.mockPasswordChangeRequests[0] });
+    }
+
+    const resolved: PasswordChangeRequestDTO = {
+      ...this.mockPasswordChangeRequests[index],
+      status: 'resolved',
+      resolvedAt: new Date().toISOString(),
+    };
+    this.mockPasswordChangeRequests[index] = resolved;
+    return of({ data: resolved });
   }
 
   private normalizeListResponse(response: BackendEnvelope<BackendUserListData>): UserListResponse {

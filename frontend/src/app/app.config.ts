@@ -6,12 +6,13 @@ import Aura from '@primeuix/themes/aura';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './@core/interceptor/auth-interceptor';
+import { authRefreshInterceptor } from './@core/interceptor/auth-refresh.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideHttpClient(
-      withInterceptors([authInterceptor]),
+      withInterceptors([authInterceptor, authRefreshInterceptor]),
       withFetch(),
     ),
     provideRouter(routes),
