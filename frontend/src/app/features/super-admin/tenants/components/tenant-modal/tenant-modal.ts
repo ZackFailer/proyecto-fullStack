@@ -31,6 +31,11 @@ import { TenantFormValue, TenantListItemDTO, TenantStatus } from '../../interfac
           <input id="tenant-name" pInputText [ngModel]="form().name" (ngModelChange)="update('name', $event)" />
         </div>
 
+        <div class="grid gap-2 sm:col-span-2">
+          <label for="tenant-legal-name">Razon social</label>
+          <input id="tenant-legal-name" pInputText [ngModel]="form().legalName" (ngModelChange)="update('legalName', $event)" />
+        </div>
+
         <div class="grid gap-2">
           <label for="tenant-document-type">Tipo documento</label>
           <input id="tenant-document-type" pInputText [ngModel]="form().documentType" (ngModelChange)="update('documentType', $event)" [disabled]="isEdit()" />
@@ -52,6 +57,46 @@ import { TenantFormValue, TenantListItemDTO, TenantStatus } from '../../interfac
             [ngModel]="form().status"
             (ngModelChange)="update('status', $event)"
           />
+        </div>
+
+        <div class="grid gap-2 sm:col-span-2">
+          <label for="tenant-email">Email</label>
+          <input id="tenant-email" pInputText [ngModel]="form().email" (ngModelChange)="update('email', $event)" />
+        </div>
+
+        <div class="grid gap-2">
+          <label for="tenant-phone">Telefono</label>
+          <input id="tenant-phone" pInputText [ngModel]="form().phone" (ngModelChange)="update('phone', $event)" />
+        </div>
+
+        <div class="grid gap-2">
+          <label for="tenant-currency">Moneda</label>
+          <input id="tenant-currency" pInputText [ngModel]="form().currency" (ngModelChange)="update('currency', $event)" placeholder="USD" />
+        </div>
+
+        <div class="grid gap-2 sm:col-span-2">
+          <label for="tenant-timezone">Zona horaria</label>
+          <input id="tenant-timezone" pInputText [ngModel]="form().timezone" (ngModelChange)="update('timezone', $event)" placeholder="UTC" />
+        </div>
+
+        <div class="grid gap-2 sm:col-span-2">
+          <label for="tenant-address">Direccion</label>
+          <input id="tenant-address" pInputText [ngModel]="form().address" (ngModelChange)="update('address', $event)" />
+        </div>
+
+        <div class="grid gap-2 sm:col-span-2">
+          <label for="tenant-logo-url">Logo URL</label>
+          <input id="tenant-logo-url" pInputText [ngModel]="form().brandingLogoUrl" (ngModelChange)="update('brandingLogoUrl', $event)" />
+        </div>
+
+        <div class="grid gap-2">
+          <label for="tenant-primary-color">Color primario</label>
+          <input id="tenant-primary-color" pInputText [ngModel]="form().brandingPrimaryColor" (ngModelChange)="update('brandingPrimaryColor', $event)" placeholder="#0ea5e9" />
+        </div>
+
+        <div class="grid gap-2">
+          <label for="tenant-secondary-color">Color secundario</label>
+          <input id="tenant-secondary-color" pInputText [ngModel]="form().brandingSecondaryColor" (ngModelChange)="update('brandingSecondaryColor', $event)" placeholder="#0369a1" />
         </div>
       </div>
 
@@ -88,9 +133,18 @@ export class TenantModal {
     id: undefined,
     slug: '',
     name: '',
+    legalName: '',
     documentType: '',
     documentNumber: '',
+    email: '',
+    phone: '',
+    address: '',
+    timezone: 'UTC',
+    currency: 'USD',
     status: 'active',
+    brandingLogoUrl: '',
+    brandingPrimaryColor: '',
+    brandingSecondaryColor: '',
   });
 
   protected readonly isEdit = computed(() => Boolean(this.tenant()));
@@ -115,9 +169,18 @@ export class TenantModal {
         id: tenant?.id,
         slug: tenant?.slug ?? '',
         name: tenant?.name ?? '',
+        legalName: tenant?.legalName ?? '',
         documentType: tenant?.documentType ?? '',
         documentNumber: tenant?.documentNumber ?? '',
+        email: tenant?.email ?? '',
+        phone: tenant?.phone ?? '',
+        address: tenant?.address ?? '',
+        timezone: tenant?.timezone ?? 'UTC',
+        currency: tenant?.currency ?? 'USD',
         status: tenant?.status ?? 'active',
+        brandingLogoUrl: tenant?.branding?.logoUrl ?? '',
+        brandingPrimaryColor: tenant?.branding?.primaryColor ?? '',
+        brandingSecondaryColor: tenant?.branding?.secondaryColor ?? '',
       });
     });
   }
@@ -139,9 +202,18 @@ export class TenantModal {
       ...this.form(),
       slug: this.form().slug.trim().toLowerCase(),
       name: this.form().name.trim(),
+      legalName: this.form().legalName.trim(),
       documentType: this.form().documentType.trim(),
       documentNumber: this.form().documentNumber.trim(),
+      email: this.form().email.trim(),
+      phone: this.form().phone.trim(),
+      address: this.form().address.trim(),
+      timezone: this.form().timezone.trim() || 'UTC',
+      currency: this.form().currency.trim().toUpperCase() || 'USD',
       status: cleanStatus,
+      brandingLogoUrl: this.form().brandingLogoUrl.trim(),
+      brandingPrimaryColor: this.form().brandingPrimaryColor.trim(),
+      brandingSecondaryColor: this.form().brandingSecondaryColor.trim(),
     });
   }
 

@@ -3,11 +3,14 @@ import { AuthRequest } from '../models/auth.model.js';
 import {
   createTenant,
   getTenantById,
+  getTenantSettings,
   listTenants,
   updateTenant,
+  updateTenantSettings,
   CreateTenantInput,
   ListTenantsFilters,
   UpdateTenantInput,
+  UpdateTenantSettingsInput,
 } from '../services/tenant.service.js';
 
 const requireSuperAdmin = (req: AuthRequest, res: Response): boolean => {
@@ -16,6 +19,61 @@ const requireSuperAdmin = (req: AuthRequest, res: Response): boolean => {
     return false;
   }
   return true;
+};
+
+const rejectLegacyTenantFields = (req: AuthRequest, res: Response): boolean => {
+  if (req.body.timezone !== undefined) {
+    res.status(400).json({
+      success: false,
+      message: 'timezone no es soportado en este contrato',
+      code: 'UNSUPPORTED_FIELD',
+    });
+    return true;
+  }
+
+  if (req.body.currency !== undefined) {
+    res.status(400).json({
+      success: false,
+      message: 'currency root no es soportado. Use settings.currency',
+      code: 'UNSUPPORTED_FIELD',
+    });
+    return true;
+  }
+
+  if (req.body.branding !== undefined) {
+    res.status(400).json({
+      success: false,
+      message: 'branding root no es soportado. Use settings.branding',
+      code: 'UNSUPPORTED_FIELD',
+    });
+    return true;
+  }
+
+  return false;
+};
+
+const parseSettingsInput = (input: unknown): UpdateTenantSettingsInput | undefined => {
+  if (!input || typeof input !== 'object') {
+    return undefined;
+  }
+
+  const source = input as Record<string, unknown>;
+  const updates: UpdateTenantSettingsInput = {};
+
+  if (source.currency !== undefined) {
+    updates.currency = String(source.currency);
+  }
+
+  if (source.branding !== undefined && source.branding !== null && typeof source.branding === 'object') {
+    const brandingSource = source.branding as Record<string, unknown>;
+    updates.branding = {};
+
+    if (brandingSource.logoUrl !== undefined) updates.branding.logoUrl = String(brandingSource.logoUrl);
+    if (brandingSource.primaryColor !== undefined) updates.branding.primaryColor = String(brandingSource.primaryColor);
+    if (brandingSource.secondaryColor !== undefined) updates.branding.secondaryColor = String(brandingSource.secondaryColor);
+  }
+
+  return updates;
 };
 
 export const listTenantsHandler = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -54,6 +112,7 @@ export const listTenantsHandler = async (req: AuthRequest, res: Response, next: 
 export const createTenantHandler = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (!requireSuperAdmin(req, res)) return;
+    if (rejectLegacyTenantFields(req, res)) return;
 
     const payload: CreateTenantInput = {
       slug: String(req.body.slug ?? ''),
@@ -66,10 +125,10 @@ export const createTenantHandler = async (req: AuthRequest, res: Response, next:
     if (req.body.email !== undefined) payload.email = String(req.body.email);
     if (req.body.phone !== undefined) payload.phone = String(req.body.phone);
     if (req.body.address !== undefined) payload.address = String(req.body.address);
-    if (req.body.timezone !== undefined) payload.timezone = String(req.body.timezone);
-    if (req.body.currency !== undefined) payload.currency = String(req.body.currency);
     if (req.body.status !== undefined) payload.status = req.body.status;
-    if (req.body.branding !== undefined) payload.branding = req.body.branding;
+
+    const settings = parseSettingsInput(req.body.settings);
+    if (settings !== undefined) payload.settings = settings;
 
     const tenant = await createTenant(payload);
     res.status(201).json({ success: true, message: 'Tenant creado', data: tenant });
@@ -97,6 +156,15 @@ export const getTenantHandler = async (req: AuthRequest, res: Response, next: Ne
 export const updateTenantHandler = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (!requireSuperAdmin(req, res)) return;
+    if (rejectLegacyTenantFields(req, res)) return;
+    if (req.body.settings !== undefined) {
+      res.status(400).json({
+        success: false,
+        message: 'settings no es soportado en este endpoint. Use /tenants/:tenantId/settings',
+        code: 'UNSUPPORTED_FIELD',
+      });
+      return;
+    }
 
     const tenantId = typeof req.params.tenantId === 'string' ? req.params.tenantId : '';
     const updates: UpdateTenantInput = {};
@@ -106,10 +174,7 @@ export const updateTenantHandler = async (req: AuthRequest, res: Response, next:
     if (req.body.email !== undefined) updates.email = String(req.body.email);
     if (req.body.phone !== undefined) updates.phone = String(req.body.phone);
     if (req.body.address !== undefined) updates.address = String(req.body.address);
-    if (req.body.timezone !== undefined) updates.timezone = String(req.body.timezone);
-    if (req.body.currency !== undefined) updates.currency = String(req.body.currency);
     if (req.body.status !== undefined) updates.status = req.body.status;
-    if (req.body.branding !== undefined) updates.branding = req.body.branding;
 
     const tenant = await updateTenant(tenantId, updates);
     if (!tenant) {
@@ -118,6 +183,43 @@ export const updateTenantHandler = async (req: AuthRequest, res: Response, next:
     }
 
     res.status(200).json({ success: true, message: 'Tenant actualizado', data: tenant });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTenantSettingsHandler = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+
+    const tenantId = typeof req.params.tenantId === 'string' ? req.params.tenantId : '';
+    const settings = await getTenantSettings(tenantId);
+
+    if (!settings) {
+      res.status(404).json({ success: false, message: 'Tenant no encontrado', code: 'TENANT_NOT_FOUND' });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: 'Settings del tenant obtenidos', data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateTenantSettingsHandler = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!requireSuperAdmin(req, res)) return;
+
+    const tenantId = typeof req.params.tenantId === 'string' ? req.params.tenantId : '';
+    const updates = parseSettingsInput(req.body) ?? {};
+
+    const settings = await updateTenantSettings(tenantId, updates);
+    if (!settings) {
+      res.status(404).json({ success: false, message: 'Tenant no encontrado', code: 'TENANT_NOT_FOUND' });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: 'Settings del tenant actualizados', data: settings });
   } catch (error) {
     next(error);
   }

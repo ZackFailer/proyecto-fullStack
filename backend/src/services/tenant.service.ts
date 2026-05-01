@@ -1,5 +1,5 @@
 import { isValidObjectId } from 'mongoose';
-import { ITenant, Tenant, TenantStatus } from '../models/tenant.model.js';
+import { ITenant, Tenant, TenantBrandingSettings, TenantSettings, TenantStatus } from '../models/tenant.model.js';
 
 export interface ServiceError extends Error {
   status?: number;
@@ -31,10 +31,8 @@ export interface CreateTenantInput {
   email?: string;
   phone?: string;
   address?: string;
-  timezone?: string;
-  currency?: string;
   status?: TenantStatus;
-  branding?: ITenant['branding'];
+  settings?: TenantSettings;
 }
 
 export interface UpdateTenantInput {
@@ -43,10 +41,12 @@ export interface UpdateTenantInput {
   email?: string;
   phone?: string;
   address?: string;
-  timezone?: string;
-  currency?: string;
   status?: TenantStatus;
-  branding?: ITenant['branding'];
+}
+
+export interface UpdateTenantSettingsInput {
+  currency?: string;
+  branding?: TenantBrandingSettings;
 }
 
 const buildError = (status: number, code: string, message: string, details?: unknown): ServiceError => {
@@ -76,6 +76,34 @@ const parseTenantId = (tenantId: string) => {
   if (!isValidObjectId(tenantId)) {
     throw buildError(400, 'INVALID_ID', 'tenantId invalido');
   }
+};
+
+const normalizeBranding = (branding?: TenantBrandingSettings): TenantBrandingSettings | undefined => {
+  if (!branding) return undefined;
+
+  const normalized: TenantBrandingSettings = {};
+  if (branding.logoUrl !== undefined) normalized.logoUrl = branding.logoUrl.trim();
+  if (branding.primaryColor !== undefined) normalized.primaryColor = branding.primaryColor.trim();
+  if (branding.secondaryColor !== undefined) normalized.secondaryColor = branding.secondaryColor.trim();
+
+  if (!normalized.logoUrl && !normalized.primaryColor && !normalized.secondaryColor) {
+    return undefined;
+  }
+
+  return normalized;
+};
+
+const normalizeSettings = (settings?: TenantSettings): TenantSettings => {
+  const normalized: TenantSettings = {
+    currency: settings?.currency?.trim().toUpperCase() || 'USD',
+  };
+
+  const branding = normalizeBranding(settings?.branding);
+  if (branding) {
+    normalized.branding = branding;
+  }
+
+  return normalized;
 };
 
 export const listTenants = async (filters: ListTenantsFilters): Promise<ListTenantsResult> => {
@@ -133,10 +161,8 @@ export const createTenant = async (payload: CreateTenantInput): Promise<ITenant>
     email: payload.email?.trim().toLowerCase(),
     phone: payload.phone?.trim(),
     address: payload.address?.trim(),
-    timezone: payload.timezone?.trim() || 'UTC',
-    currency: payload.currency?.trim().toUpperCase() || 'USD',
     status: payload.status ?? 'active',
-    branding: payload.branding,
+    settings: normalizeSettings(payload.settings),
   });
 
   const saved = await tenant.save();
@@ -158,10 +184,7 @@ export const updateTenant = async (tenantId: string, updates: UpdateTenantInput)
   if (updates.email !== undefined) updatePayload.email = updates.email.trim().toLowerCase();
   if (updates.phone !== undefined) updatePayload.phone = updates.phone.trim();
   if (updates.address !== undefined) updatePayload.address = updates.address.trim();
-  if (updates.timezone !== undefined) updatePayload.timezone = updates.timezone.trim();
-  if (updates.currency !== undefined) updatePayload.currency = updates.currency.trim().toUpperCase();
   if (updates.status !== undefined) updatePayload.status = updates.status;
-  if (updates.branding !== undefined) updatePayload.branding = updates.branding;
 
   if (Object.keys(updatePayload).length === 0) {
     throw buildError(400, 'VALIDATION_ERROR', 'No se enviaron campos para actualizar');
@@ -174,4 +197,55 @@ export const updateTenant = async (tenantId: string, updates: UpdateTenantInput)
   ).lean();
 
   return updated ? sanitizeTenant(updated as ITenant) : null;
+};
+
+export const getTenantSettings = async (tenantId: string): Promise<TenantSettings | null> => {
+  parseTenantId(tenantId);
+
+  const tenant = await Tenant.findOne({ _id: tenantId, deletedAt: null }).select({ settings: 1 }).lean();
+  if (!tenant) return null;
+
+  const current = (tenant as ITenant).settings;
+  return normalizeSettings(current);
+};
+
+export const updateTenantSettings = async (
+  tenantId: string,
+  updates: UpdateTenantSettingsInput
+): Promise<TenantSettings | null> => {
+  parseTenantId(tenantId);
+
+  if (updates.currency === undefined && updates.branding === undefined) {
+    throw buildError(400, 'EMPTY_UPDATE', 'No se enviaron campos para actualizar settings');
+  }
+
+  const tenant = await Tenant.findOne({ _id: tenantId, deletedAt: null }).lean();
+  if (!tenant) return null;
+
+  const current = normalizeSettings((tenant as ITenant).settings);
+
+  const merged: TenantSettings = {};
+
+  const nextCurrency = updates.currency !== undefined ? updates.currency.trim().toUpperCase() : current.currency;
+  if (nextCurrency) {
+    merged.currency = nextCurrency;
+  }
+
+  const nextBranding =
+    updates.branding !== undefined ? normalizeBranding(updates.branding) : normalizeBranding(current.branding);
+  if (nextBranding) {
+    merged.branding = nextBranding;
+  }
+
+  const updated = await Tenant.findOneAndUpdate(
+    { _id: tenantId, deletedAt: null },
+    { settings: merged },
+    { new: true }
+  )
+    .select({ settings: 1 })
+    .lean();
+
+  if (!updated) return null;
+
+  return normalizeSettings((updated as ITenant).settings);
 };

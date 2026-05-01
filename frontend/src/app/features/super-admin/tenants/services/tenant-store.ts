@@ -136,19 +136,58 @@ export class TenantStore {
 	}
 
 	private toCreatePayload(value: TenantFormValue): CreateTenantPayload {
+		const branding = this.buildBrandingPayload(value);
+
 		return {
 			slug: value.slug.trim().toLowerCase(),
 			name: value.name.trim(),
+			legalName: this.toOptional(value.legalName),
 			documentType: value.documentType.trim(),
 			documentNumber: value.documentNumber.trim(),
+			email: this.toOptional(value.email)?.toLowerCase(),
+			phone: this.toOptional(value.phone),
+			address: this.toOptional(value.address),
+			timezone: this.toOptional(value.timezone),
+			currency: this.toOptional(value.currency)?.toUpperCase(),
 			status: value.status,
+			branding,
 		};
 	}
 
 	private toUpdatePayload(value: TenantFormValue): UpdateTenantPayload {
+		const branding = this.buildBrandingPayload(value);
+
 		return {
 			name: value.name.trim(),
+			legalName: this.toOptional(value.legalName),
+			email: this.toOptional(value.email)?.toLowerCase(),
+			phone: this.toOptional(value.phone),
+			address: this.toOptional(value.address),
+			timezone: this.toOptional(value.timezone),
+			currency: this.toOptional(value.currency)?.toUpperCase(),
 			status: value.status,
+			branding,
+		};
+	}
+
+	private toOptional(value: string): string | undefined {
+		const trimmed = value.trim();
+		return trimmed.length > 0 ? trimmed : undefined;
+	}
+
+	private buildBrandingPayload(value: TenantFormValue): UpdateTenantPayload['branding'] {
+		const logoUrl = this.toOptional(value.brandingLogoUrl);
+		const primaryColor = this.toOptional(value.brandingPrimaryColor);
+		const secondaryColor = this.toOptional(value.brandingSecondaryColor);
+
+		if (!logoUrl && !primaryColor && !secondaryColor) {
+			return undefined;
+		}
+
+		return {
+			logoUrl,
+			primaryColor,
+			secondaryColor,
 		};
 	}
 

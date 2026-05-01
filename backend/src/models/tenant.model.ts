@@ -2,6 +2,17 @@ import { Schema, model, Types } from 'mongoose';
 
 export type TenantStatus = 'active' | 'suspended' | 'archived';
 
+export interface TenantBrandingSettings {
+  logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+}
+
+export interface TenantSettings {
+  currency?: string;
+  branding?: TenantBrandingSettings;
+}
+
 export interface ITenant {
   id?: string;
   _id?: Types.ObjectId;
@@ -13,18 +24,29 @@ export interface ITenant {
   email?: string;
   phone?: string;
   address?: string;
-  timezone: string;
-  currency: string;
   status: TenantStatus;
-  branding?: {
-    logoUrl?: string;
-    primaryColor?: string;
-    secondaryColor?: string;
-  };
+  settings?: TenantSettings;
   deletedAt?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+const tenantBrandingSettingsSchema = new Schema<TenantBrandingSettings>(
+  {
+    logoUrl: { type: String, trim: true },
+    primaryColor: { type: String, trim: true },
+    secondaryColor: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
+const tenantSettingsSchema = new Schema<TenantSettings>(
+  {
+    currency: { type: String, trim: true, uppercase: true, default: 'USD' },
+    branding: { type: tenantBrandingSettingsSchema, default: undefined },
+  },
+  { _id: false }
+);
 
 const tenantSchema = new Schema<ITenant>(
   {
@@ -36,8 +58,6 @@ const tenantSchema = new Schema<ITenant>(
     email: { type: String, trim: true, lowercase: true },
     phone: { type: String, trim: true },
     address: { type: String, trim: true },
-    timezone: { type: String, trim: true, default: 'UTC' },
-    currency: { type: String, trim: true, uppercase: true, default: 'USD' },
     status: {
       type: String,
       enum: ['active', 'suspended', 'archived'],
@@ -45,11 +65,7 @@ const tenantSchema = new Schema<ITenant>(
       default: 'active',
       index: true,
     },
-    branding: {
-      logoUrl: { type: String, trim: true },
-      primaryColor: { type: String, trim: true },
-      secondaryColor: { type: String, trim: true },
-    },
+    settings: { type: tenantSettingsSchema, default: () => ({ currency: 'USD' }) },
     deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
