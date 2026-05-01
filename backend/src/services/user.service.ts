@@ -87,6 +87,36 @@ const sanitizeUser = (user: IUser): IUser => {
   return sanitized as unknown as IUser;
 };
 
+const enrichWithUpdatedByName = async (user: IUser): Promise<IUser & { updatedByName: string | null }> => {
+  const userRecord = user as unknown as Record<string, unknown>;
+  const updatedByValue = userRecord.updatedBy;
+
+  if (!updatedByValue) {
+    return { ...user, updatedByName: null };
+  }
+
+  if (typeof updatedByValue === 'object' && updatedByValue !== null) {
+    const populated = updatedByValue as Record<string, unknown>;
+    if (typeof populated.fullName === 'string' && populated.fullName.trim().length > 0) {
+      return { ...user, updatedByName: populated.fullName };
+    }
+
+    const nestedId = populated._id;
+    if (typeof nestedId === 'string' && isValidObjectId(nestedId)) {
+      const modifier = await User.findById(nestedId).select('fullName').lean();
+      return { ...user, updatedByName: modifier?.fullName ?? null };
+    }
+  }
+
+  const updatedById = String(updatedByValue);
+  if (!isValidObjectId(updatedById)) {
+    return { ...user, updatedByName: null };
+  }
+
+  const modifier = await User.findById(updatedById).select('fullName').lean();
+  return { ...user, updatedByName: modifier?.fullName ?? null };
+};
+
 const ensureAnotherAdminExists = async (clientId: Types.ObjectId | null, excludeUserId: string) => {
   if (!clientId) return; // super-admin tenant-less not checked
   const hasAdmin = await User.exists({
@@ -137,7 +167,12 @@ export const createUser = async (payload: CreateUserInput): Promise<IUser> => {
   return sanitizeUser(saved.toJSON() as IUser);
 };
 
-export const listUsers = async (filters: ListUsersFilters): Promise<ListUsersResult> => {
+export const listUsers = async (filters: ListUsersFilters): Promise<{
+  items: (IUser & { updatedByName: string | null })[];
+  page: number;
+  limit: number;
+  total: number;
+}> => {
   const page = Math.max(1, Number(filters.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(filters.limit) || 20));
   const query: Record<string, unknown> = { deletedAt: null };
@@ -159,19 +194,31 @@ export const listUsers = async (filters: ListUsersFilters): Promise<ListUsersRes
 
   const skip = (page - 1) * limit;
   const [items, total] = await Promise.all([
-    User.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    User.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('updatedBy', 'fullName')
+      .lean(),
     User.countDocuments(query),
   ]);
 
+  const sanitizedItems = await Promise.all(
+    items.map(async (u) => {
+      const sanitized = sanitizeUser(u as IUser);
+      return enrichWithUpdatedByName(sanitized);
+    })
+  );
+
   return {
-    items: items.map((u) => sanitizeUser(u as IUser)),
+    items: sanitizedItems,
     page,
     limit,
     total,
   };
 };
 
-export const getUserById = async (id: string, clientId?: string | null): Promise<IUser | null> => {
+export const getUserById = async (id: string, clientId?: string | null): Promise<(IUser & { updatedByName: string | null }) | null> => {
   if (!isValidObjectId(id)) {
     throw buildError(400, 'INVALID_ID', 'ID inválido');
   }
@@ -182,16 +229,18 @@ export const getUserById = async (id: string, clientId?: string | null): Promise
     query.clientId = clientFilter;
   }
 
-  const user = await User.findOne(query).lean();
+  const user = await User.findOne(query).populate('updatedBy', 'fullName').lean();
   if (!user) return null;
-  return sanitizeUser(user as IUser);
+
+  const sanitized = sanitizeUser(user as IUser);
+  return enrichWithUpdatedByName(sanitized);
 };
 
 export const updateUser = async (
   id: string,
   updates: UpdateUserInput,
   clientId?: string | null
-): Promise<IUser | null> => {
+): Promise<(IUser & { updatedByName: string | null }) | null> => {
   if (!isValidObjectId(id)) {
     throw buildError(400, 'INVALID_ID', 'ID inválido');
   }
@@ -229,9 +278,13 @@ export const updateUser = async (
     await ensureAnotherAdminExists(targetClientId, id);
   }
 
-  const updated = await User.findOneAndUpdate(query, updatePayload, { new: true }).lean();
+  const updated = await User.findOneAndUpdate(query, updatePayload, { new: true })
+    .populate('updatedBy', 'fullName')
+    .lean();
   if (!updated) return null;
-  return sanitizeUser(updated as IUser);
+
+  const sanitized = sanitizeUser(updated as IUser);
+  return enrichWithUpdatedByName(sanitized);
 };
 
 export const softDeleteUser = async (id: string, clientId?: string | null): Promise<boolean> => {

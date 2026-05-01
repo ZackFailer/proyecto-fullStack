@@ -41,6 +41,7 @@ import { UserDTO, UserMeta, UserStatus } from '../../interfaces/user';
             <th>Estado</th>
             <th>Último acceso</th>
             <th>Creado</th>
+            <th>Última modificación</th>
             @if (showActions()) {
               <th class="text-center">Acciones</th>
             }
@@ -75,7 +76,10 @@ import { UserDTO, UserMeta, UserStatus } from '../../interfaces/user';
               </span>
             </td>
             <td>
-              <span class="text-sm text-surface-700">{{ user.createdAt | date: 'mediumDate' }}</span>
+              <span class="text-sm text-surface-700">{{ user.createdAt | date: 'medium' }}</span>
+            </td>
+            <td>
+              <span class="text-sm text-surface-700">{{ user.updatedAt | date: 'medium' }}</span>
             </td>
             @if (showActions()) {
               <td class="text-center">
@@ -101,9 +105,9 @@ import { UserDTO, UserMeta, UserStatus } from '../../interfaces/user';
           </tr>
         </ng-template>
 
-        <ng-template pTemplate="emptymessage">
+<ng-template pTemplate="emptymessage">
           <tr>
-            <td [attr.colspan]="showActions() ? 6 : 5" class="py-10 text-center text-sm text-surface-600">
+            <td [attr.colspan]="showActions() ? 7 : 6" class="py-10 text-center text-sm text-surface-600">
               No se encontraron usuarios con los filtros seleccionados.
             </td>
           </tr>

@@ -34,6 +34,9 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
             return;
         }
 
+        // Update lastLoginAt before issuing token
+        await User.findByIdAndUpdate(user._id, { lastLoginAt: new Date() });
+
         const payload = {
             id: user._id?.toString(),
             role: user.role,

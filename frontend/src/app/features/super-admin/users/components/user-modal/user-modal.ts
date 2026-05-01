@@ -157,11 +157,13 @@ interface Option<T> {
 
         <div class="flex items-center justify-between gap-2">
           <div class="text-xs text-surface-600">
-            {{
-              isEdit()
-                ? 'Edita rol, estado o perfil sin salir de la vista.'
-                : 'El usuario se crea activo o con invitacion pendiente.'
-            }}
+            @if (isEdit()) {
+              @if (modifierInfo()) {
+                {{ modifierInfo() }}
+              }
+            } @else {
+              El usuario se crea activo o con invitacion pendiente.
+            }
           </div>
           <div class="flex gap-2">
             <p-button
@@ -217,6 +219,14 @@ export default class UserModal {
   });
 
   readonly isEdit = computed(() => Boolean(this.user()));
+
+  readonly modifierInfo = computed(() => {
+    const userValue = this.user();
+    if (!userValue?.updatedByName) {
+      return null;
+    }
+    return `Última modificación por: ${userValue.updatedByName}`;
+  });
 
   private formStateKey: string | null = null;
 

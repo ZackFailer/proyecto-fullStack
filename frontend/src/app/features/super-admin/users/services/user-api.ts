@@ -40,6 +40,7 @@ export class UserApi {
       lastLoginAt: '2024-11-02T10:12:00.000Z',
       createdAt: '2024-10-01T09:00:00.000Z',
       updatedAt: '2024-12-15T12:00:00.000Z',
+      updatedByName: 'Super Admin',
     },
     {
       id: 'u-1002',
@@ -52,6 +53,7 @@ export class UserApi {
       lastLoginAt: null,
       createdAt: '2024-12-20T08:00:00.000Z',
       updatedAt: '2024-12-20T08:00:00.000Z',
+      updatedByName: null,
     },
     {
       id: 'u-1003',
@@ -64,6 +66,7 @@ export class UserApi {
       lastLoginAt: '2025-01-10T14:25:00.000Z',
       createdAt: '2024-12-05T10:00:00.000Z',
       updatedAt: '2025-01-10T14:25:00.000Z',
+      updatedByName: 'Alex Estrada',
     },
     {
       id: 'u-1004',
@@ -76,6 +79,7 @@ export class UserApi {
       lastLoginAt: '2024-12-18T16:10:00.000Z',
       createdAt: '2024-11-12T08:30:00.000Z',
       updatedAt: '2024-12-19T09:00:00.000Z',
+      updatedByName: 'María Suarez',
     },
     {
       id: 'u-1005',
@@ -88,6 +92,7 @@ export class UserApi {
       lastLoginAt: '2025-01-07T09:40:00.000Z',
       createdAt: '2024-12-25T07:00:00.000Z',
       updatedAt: '2025-01-07T09:40:00.000Z',
+      updatedByName: null,
     }
   ];
 
@@ -251,6 +256,7 @@ export class UserApi {
       phone: user.phone ?? null,
       locale: user.locale ?? null,
       lastLoginAt: user.lastLoginAt ?? null,
+      updatedByName: user.updatedByName ?? null,
     };
   }
 }

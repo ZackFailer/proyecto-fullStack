@@ -13,6 +13,7 @@ export interface UserDTO {
   lastLoginAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  updatedByName?: string | null;
 }
 
 export interface UserMeta {

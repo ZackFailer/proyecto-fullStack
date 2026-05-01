@@ -562,4 +562,108 @@ describe('user endpoints - scope and permissions', () => {
       expect(response.body.code).toBe('INVALID_ID');
     });
   });
+
+  // ===================== UPDATED BY NAME TESTS =====================
+
+  describe('updatedByName field', () => {
+    it('includes updatedByName in listUsers response when updatedBy is set', async () => {
+      vi.mocked(userService.listUsers).mockResolvedValue({
+        items: [
+          {
+            id: 'u1',
+            email: 'admin@tenant.com',
+            role: 'admin',
+            clientId: tenantId,
+            status: 'active',
+            updatedByName: 'Modifier User',
+          } as any,
+        ],
+        page: 1,
+        limit: 20,
+        total: 1,
+      });
+
+      const token = signToken({ id: 'u-admin', role: 'admin', tenantId, clientId: tenantId });
+      const response = await request(app)
+        .get(`/api/tenants/${tenantId}/users`)
+        .set(authHeader(token));
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.items[0]).toHaveProperty('updatedByName');
+      expect(response.body.data.items[0].updatedByName).toBe('Modifier User');
+    });
+
+    it('includes updatedByName as null when updatedBy is not set', async () => {
+      vi.mocked(userService.listUsers).mockResolvedValue({
+        items: [
+          {
+            id: 'u1',
+            email: 'admin@tenant.com',
+            role: 'admin',
+            clientId: tenantId,
+            status: 'active',
+            updatedByName: null,
+          } as any,
+        ],
+        page: 1,
+        limit: 20,
+        total: 1,
+      });
+
+      const token = signToken({ id: 'u-admin', role: 'admin', tenantId, clientId: tenantId });
+      const response = await request(app)
+        .get(`/api/tenants/${tenantId}/users`)
+        .set(authHeader(token));
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.items[0].updatedByName).toBeNull();
+    });
+
+    it('includes updatedByName in getUser response', async () => {
+      vi.mocked(userService.getUserById).mockResolvedValue({
+        id: 'u1',
+        email: 'admin@tenant.com',
+        role: 'admin',
+        fullName: 'Admin User',
+        clientId: tenantId,
+        status: 'active',
+        updatedByName: 'Modifier User',
+      } as any);
+
+      const token = signToken({ id: 'u-admin', role: 'admin', tenantId, clientId: tenantId });
+      const response = await request(app)
+        .get(`/api/tenants/${tenantId}/users/507f1f77bcf86cd799439011`)
+        .set(authHeader(token));
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty('updatedByName');
+      expect(response.body.data.updatedByName).toBe('Modifier User');
+    });
+
+    it('includes updatedByName in updateUser response', async () => {
+      vi.mocked(userService.updateUser).mockResolvedValue({
+        id: 'u1',
+        email: 'admin@tenant.com',
+        role: 'admin',
+        fullName: 'Updated Name',
+        clientId: tenantId,
+        status: 'active',
+        updatedByName: 'Modifier User',
+      } as any);
+
+      const token = signToken({ id: 'u-admin', role: 'admin', tenantId, clientId: tenantId });
+      const response = await request(app)
+        .patch(`/api/tenants/${tenantId}/users/507f1f77bcf86cd799439011`)
+        .set(authHeader(token))
+        .send({ fullName: 'Updated Name' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty('updatedByName');
+      expect(response.body.data.updatedByName).toBe('Modifier User');
+    });
+  });
 });
