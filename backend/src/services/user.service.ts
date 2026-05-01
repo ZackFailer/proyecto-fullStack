@@ -307,3 +307,61 @@ export const softDeleteUser = async (id: string, clientId?: string | null): Prom
 
   return Boolean(result);
 };
+
+/**
+ * Changes a user's password (privileged operation - bypasses self-auth).
+ * - Admin role: can only change operator/viewer passwords (must provide adminPassword)
+ * - Super-admin role: can change any role password (no adminPassword needed)
+ */
+export const changeUserPassword = async (
+  targetId: string,
+  newPassword: string,
+  options?: {
+    clientId?: string | null;
+    actorRole: UserRole;
+    actorPassword?: string; // Required when actor is admin
+  }
+): Promise<void> => {
+  if (!isValidObjectId(targetId)) {
+    throw buildError(400, 'INVALID_ID', 'ID inválido');
+  }
+
+  const query: Record<string, unknown> = { _id: targetId, deletedAt: null };
+  const clientFilter = toObjectIdOrNull(options?.clientId);
+  if (clientFilter !== undefined) {
+    query.clientId = clientFilter;
+  }
+
+  const target = await User.findOne(query).lean();
+  if (!target) {
+    throw buildError(404, 'USER_NOT_FOUND', 'Usuario no encontrado');
+  }
+
+  // Validate actor role permissions
+  const actorRole = options?.actorRole;
+
+  if (actorRole === 'admin') {
+    // Admin can only change operator or viewer
+    if (target.role !== 'operator' && target.role !== 'viewer') {
+      throw buildError(403, 'FORBIDDEN', 'El rol admin no puede cambiar la contraseña de este usuario');
+    }
+  } else if (actorRole === 'super-admin') {
+    // Super-admin can change any role - allowed
+  } else {
+    // Operator, viewer cannot use this endpoint
+    throw buildError(403, 'FORBIDDEN', 'No tienes permisos para cambiar la contraseña de este usuario');
+  }
+
+  // For admin role: verify their current password
+  if (actorRole === 'admin') {
+    if (!options?.actorPassword) {
+      throw buildError(400, 'ADMIN_PASSWORD_REQUIRED', 'La contraseña del admin es requerida');
+    }
+    // Actor password needs to be verified by the caller, not here
+    // This is because actor info is not in this service (keeps it decoupled)
+  }
+
+  // Update password hash
+  const newPasswordHash = await hashPassword(newPassword);
+  await User.findByIdAndUpdate(targetId, { passwordHash: newPasswordHash });
+};
