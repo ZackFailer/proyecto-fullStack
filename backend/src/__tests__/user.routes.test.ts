@@ -14,6 +14,11 @@ vi.mock('../services/user.service.js', () => ({
   softDeleteUser: vi.fn(),
 }));
 
+// Mock login attempt service to prevent real DB calls
+vi.mock('../services/login-attempt.service.js', () => ({
+  logLoginAttempt: vi.fn(() => Promise.resolve()),
+}));
+
 const createApp = () => {
   const app = express();
   app.use(express.json());

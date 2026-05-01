@@ -21,6 +21,18 @@ vi.mock('../services/store.service.js', () => ({
   createStore: vi.fn(),
   getStoreById: vi.fn(),
   updateStore: vi.fn(),
+}));
+
+// Mock login attempt service to prevent real DB calls
+vi.mock('../services/login-attempt.service.js', () => ({
+  logLoginAttempt: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock('../services/store.service.js', () => ({
+  listStores: vi.fn(),
+  createStore: vi.fn(),
+  getStoreById: vi.fn(),
+  updateStore: vi.fn(),
   updateStoreSettings: vi.fn(),
 }));
 

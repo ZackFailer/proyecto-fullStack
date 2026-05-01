@@ -1,12 +1,16 @@
 import { NextFunction, Response } from 'express';
 import { isValidObjectId } from 'mongoose';
+import bcrypt from 'bcryptjs';
 import { AuthRequest } from '../models/auth.model.js';
+import { User } from '../models/user.model.js';
+import { validatePasswordStrength } from './auth.controller.js';
 import {
   createUser,
   listUsers,
   getUserById,
   updateUser,
   softDeleteUser,
+  changeUserPassword,
   CreateUserInput,
   UpdateUserInput,
   ListUsersFilters,
@@ -374,6 +378,107 @@ export const deleteUserHandler = async (req: AuthRequest, res: Response, next: N
     }
 
     return res.status(200).json({ success: true, message: 'Usuario eliminado', data: null });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/**
+ * changePasswordHandler - Privileged password change (admin or superadmin changes user's password).
+ * - Global scope (/api/users/:id/change-password): superadmin only
+ * - Tenant scope (/api/tenants/:tenantId/users/:id/change-password): admin or superadmin
+ */
+export const changePasswordHandler = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const scope = getScopeContext(req);
+    const actorRole = req.user?.role as UserRole;
+    const actorId = req.user?.id;
+
+    // Global scope: super-admin only
+    if (scope.type === 'global' && actorRole !== 'super-admin') {
+      return res.status(403).json({
+        success: false,
+        code: 'FORBIDDEN',
+        message: 'Solo super-admin puede cambiar contraseñas en scope global',
+      });
+    }
+
+    // Tenant scope: admin or super-admin only
+    if (scope.type === 'tenant' && actorRole !== 'admin' && actorRole !== 'super-admin') {
+      return res.status(403).json({
+        success: false,
+        code: 'FORBIDDEN',
+        message: 'No tienes permisos para cambiar la contraseña de otros usuarios',
+      });
+    }
+
+    const targetId = typeof req.params.id === 'string' ? req.params.id : undefined;
+    if (!targetId || !isValidObjectId(targetId)) {
+      return res.status(400).json({ success: false, code: 'INVALID_ID', message: 'ID inválido' });
+    }
+
+    const { adminPassword, newPassword, confirmPassword } = req.body;
+
+    // Validate required fields
+    if (actorRole === 'admin') {
+      // Admin must provide their own password
+      if (!adminPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'La contraseña del admin es requerida',
+        });
+      }
+    }
+
+    if (!newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'La nueva contraseña es requerida',
+      });
+    }
+    if (!confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'La confirmación de contraseña es requerida',
+      });
+    }
+
+    // Validate password match
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Las contraseñas no coinciden' });
+    }
+
+    // Validate password strength
+    const strengthError = validatePasswordStrength(newPassword);
+    if (strengthError) {
+      return res.status(400).json({ success: false, message: strengthError });
+    }
+
+    // For admin: verify their current password against stored hash
+    if (actorRole === 'admin' && adminPassword) {
+      const actor = await User.findOne({ _id: actorId, deletedAt: null }).lean();
+      if (!actor || !actor.passwordHash) {
+        return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
+      }
+      const match = await bcrypt.compare(adminPassword, actor.passwordHash);
+      if (!match) {
+        return res.status(401).json({ success: false, message: 'Contraseña del admin incorrecta' });
+      }
+    }
+
+    // Determine scope clientId for target user query
+    let clientIdFilter: string | null = scope.clientId;
+    if (scope.type === 'global') {
+      clientIdFilter = null;
+    }
+
+    // Call service (validates role permissions and updates password)
+    await changeUserPassword(targetId, newPassword, {
+      clientId: clientIdFilter,
+      actorRole,
+    });
+
+    return res.status(200).json({ success: true, message: 'Contraseña actualizada' });
   } catch (err) {
     return next(err);
   }
