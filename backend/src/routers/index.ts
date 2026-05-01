@@ -7,6 +7,8 @@ import userRouter from './user.routes.js';
 import { autenticate } from '../middleware/auth.middleware.js';
 import tenantRouter from './tenant.routes.js';
 import { resolveTenantContext } from '../middleware/tenantContext.middleware.js';
+import passwordChangeRequestRouter from './password-change-request.routes.js';
+import loginAttemptRouter from './login-attempt.routes.js';
 
 const router = Router();
 
@@ -20,5 +22,7 @@ router.use(resolveTenantContext);
 router.use('/tenants', tenantRouter);
 router.use('/users', userRouter);
 router.use('/products', productRoutes);
+router.use('/password-change-requests', passwordChangeRequestRouter);
+router.use('/login-attempts', loginAttemptRouter);
 
 export default router;
