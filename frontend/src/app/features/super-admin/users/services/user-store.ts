@@ -2,6 +2,8 @@ import { DestroyRef, computed, effect, inject, Injectable, signal } from '@angul
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, map, tap, Observable } from 'rxjs';
 import { UserApi } from './user-api';
+import { Auth } from '../../../../@core/services/auth/auth';
+import { TenantContext } from '../../../../@core/services/tenant/tenant-context';
 import {
   CreateUserPayload,
   UpdateUserPayload,
@@ -30,6 +32,8 @@ export interface UserFormValue {
 export class UserStore {
   private readonly api = inject(UserApi);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(Auth);
+  private readonly tenantContext = inject(TenantContext);
 
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -38,13 +42,31 @@ export class UserStore {
   readonly meta = signal<UserMeta>({ page: 1, pageSize: 10, total: 0 });
   readonly filters = signal<UserQuery>({ search: '', role: '', status: '', page: 1, pageSize: 10 });
   readonly selectedUser = signal<UserDTO | null>(null);
+  readonly scopedTenantId = signal<string | null>(null);
 
-  readonly roleOptions = computed(() => ([
-    { label: 'Super Admin', value: 'super-admin' as UserRole },
-    { label: 'Admin', value: 'admin' as UserRole },
-    { label: 'Operador', value: 'operator' as UserRole },
-    { label: 'Viewer', value: 'viewer' as UserRole },
-  ]));
+  readonly isGlobalScope = computed(() => !this.scopedTenantId());
+  readonly isTenantScope = computed(() => Boolean(this.scopedTenantId()));
+  readonly isSuperAdminTenantView = computed(() => this.isTenantScope() && this.auth.isSuperAdmin());
+  readonly canMutate = computed(() => {
+    if (this.isGlobalScope()) return this.auth.isSuperAdmin();
+    if (this.isSuperAdminTenantView()) return true;
+    return this.auth.currentUser()?.role === 'admin';
+  });
+  readonly showRoleFilter = computed(() => !this.isGlobalScope());
+  readonly showCreate = computed(() => this.canMutate());
+  readonly showActions = computed(() => this.canMutate());
+
+  readonly roleOptions = computed(() => {
+    if (this.isGlobalScope()) {
+      return [{ label: 'Super Admin', value: 'super-admin' as UserRole }];
+    }
+
+    return [
+      { label: 'Admin', value: 'admin' as UserRole },
+      { label: 'Operador', value: 'operator' as UserRole },
+      { label: 'Viewer', value: 'viewer' as UserRole },
+    ];
+  });
 
   readonly statusOptions = computed(() => ([
     { label: 'Activo', value: 'active' as UserStatus },
@@ -73,17 +95,30 @@ export class UserStore {
   });
 
   constructor() {
+    this.filters.update((prev) => ({
+      ...prev,
+      role: this.isGlobalScope() ? 'super-admin' : prev.role,
+    }));
+
+    effect(() => {
+      const tenantId = this.scopedTenantId();
+      this.tenantContext.setActiveTenantId(tenantId);
+    });
+
     effect(() => {
       // Automatically refresh when filters change
       this.filters();
       this.load();
-    },);
+    });
   }
 
   load(): void {
     this.loading.set(true);
     this.api
-      .list(this.filters())
+      .list(this.filters(), {
+        tenantId: this.scopedTenantId(),
+        globalSuperAdminOnly: this.isGlobalScope(),
+      })
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.loading.set(false)),
@@ -108,6 +143,10 @@ export class UserStore {
   }
 
   setRole(role: UserRole | ''): void {
+    if (this.isGlobalScope()) {
+      return;
+    }
+
     this.filters.update(prev => ({ ...prev, role, page: 1 }));
   }
 
@@ -124,15 +163,33 @@ export class UserStore {
   }
 
   resetFilters(): void {
-    this.filters.set({ search: '', role: '', status: '', page: 1, pageSize: 10 });
+    this.filters.set({
+      search: '',
+      role: this.isGlobalScope() ? 'super-admin' : '',
+      status: '',
+      page: 1,
+      pageSize: 10,
+    });
+  }
+
+  setScope(tenantId: string | null): void {
+    this.scopedTenantId.set(tenantId);
+
+    this.filters.update((prev) => ({
+      ...prev,
+      role: tenantId ? '' : 'super-admin',
+      page: 1,
+    }));
   }
 
   openCreate(): void {
+    if (!this.canMutate()) return;
     this.selectedUser.set(null);
     this.modalOpen.set(true);
   }
 
   openEdit(user: UserDTO): void {
+    if (!this.canMutate()) return;
     this.selectedUser.set(user);
     this.modalOpen.set(true);
   }
@@ -145,9 +202,10 @@ export class UserStore {
     this.saving.set(true);
     const isEdit = Boolean(value.id);
     const payload = this.toPayload(value, isEdit);
+    const tenantId = this.scopedTenantId();
     const request$ = isEdit && value.id
-      ? this.api.update(value.id, payload as UpdateUserPayload)
-      : this.api.create(payload as CreateUserPayload);
+      ? this.api.update(value.id, payload as UpdateUserPayload, tenantId)
+      : this.api.create(payload as CreateUserPayload, tenantId);
 
     return request$
       .pipe(
@@ -169,7 +227,7 @@ export class UserStore {
   toggleStatus(user: UserDTO): Observable<UserDTO> {
     const nextStatus: UserStatus = user.status === 'active' ? 'suspended' : 'active';
     this.saving.set(true);
-    return this.api.changeStatus(user.id, nextStatus).pipe(
+    return this.api.changeStatus(user.id, nextStatus, this.scopedTenantId()).pipe(
       map(res => res.data),
       tap(updated => this.upsertUser(updated)),
       finalize(() => this.saving.set(false)),
@@ -181,7 +239,7 @@ export class UserStore {
     if (isEdit) {
       const body: UpdateUserPayload = {
         fullName: `${value.firstName} ${value.lastName}`.trim(),
-        role: value.role,
+        role: this.normalizeRole(value.role),
         status: value.status,
         phone: value.phone ?? undefined,
         locale: value.locale ?? undefined,
@@ -192,7 +250,7 @@ export class UserStore {
     const payload: CreateUserPayload = {
       email: value.email,
       fullName: `${value.firstName} ${value.lastName}`.trim(),
-      role: value.role,
+      role: this.normalizeRole(value.role),
       status: value.status ?? 'active',
       phone: value.phone ?? undefined,
       locale: value.locale ?? undefined,
@@ -203,6 +261,18 @@ export class UserStore {
     }
 
     return payload;
+  }
+
+  private normalizeRole(role: UserRole): UserRole {
+    if (this.isGlobalScope()) {
+      return 'super-admin';
+    }
+
+    if (role === 'super-admin') {
+      return 'viewer';
+    }
+
+    return role;
   }
 
   private upsertUser(user: UserDTO): void {

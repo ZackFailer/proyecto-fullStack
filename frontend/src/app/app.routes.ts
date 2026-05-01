@@ -1,4 +1,6 @@
 import { Routes } from '@angular/router';
+import { superAdminChildGuard, superAdminGuard } from './@core/guards/super-admin.guard';
+import { tenantContextChildGuard, tenantContextGuard } from './@core/guards/tenant-context.guard';
 
 export const routes: Routes = [
   {
@@ -22,11 +24,14 @@ export const routes: Routes = [
     path: 'admin',
     loadComponent: () => import('./features/layout/auth/pages/layout-auth/layout-auth').then(m => m.default),
     loadChildren: () => import('./features/layout/super-admin-layout.routes'),
-    canActivateChild: [() => import('./@core/guards/auth-guard')]
+    canActivate: [superAdminGuard],
+    canActivateChild: [superAdminChildGuard]
   },
   {
     path: 'app/:tenantId',
-    loadChildren: () => import('./features/layout/super-admin-layout.routes'),
-    canActivate: [() => import('./@core/guards/auth-guard')]
+    loadComponent: () => import('./features/layout/auth/pages/layout-auth/layout-auth').then(m => m.default),
+    loadChildren: () => import('./features/layout/tenant-layout.routes'),
+    canActivate: [tenantContextGuard],
+    canActivateChild: [tenantContextChildGuard]
   },
 ];

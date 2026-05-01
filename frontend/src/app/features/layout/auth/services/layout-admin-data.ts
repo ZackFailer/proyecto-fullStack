@@ -1,8 +1,7 @@
-import { computed, effect, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { MenuItem } from 'primeng/api';
 import { TenantContext } from '../../../../@core/services/tenant/tenant-context';
 import { Auth } from '../../../../@core/services/auth/auth';
-import SuperAdminLayout from '../../super-admin-layout.routes';
 
 @Injectable({
   providedIn: 'root'
@@ -17,37 +16,45 @@ export class LayoutAdminData {
   readonly itemSidebar = computed<MenuItem[]>(() => {
 
     if (this.tenantId() && this.auth.isSuperAdmin()) {
-      console.log(1);
-
-      return this.superAdminTenantViewSidebar()
+      return this.superAdminTenantViewSidebar();
     }
 
     if (this.auth.isSuperAdmin()) {
-      console.log(2);
-
       return this.superAdminSidebar();
     }
 
     if (this.tenantId()) {
-      console.log(3);
       return this.tenantSidebar();
     }
 
     return [];
   });
 
-  private readonly superAdminTenantViewSidebar = computed<MenuItem[]>(() => {
+  readonly isTenantView = computed(() => Boolean(this.tenantId() && this.auth.isSuperAdmin()));
 
+  readonly tenantViewLabel = computed(() => {
+    if (!this.isTenantView()) {
+      return null;
+    }
+
+    const info = this.tenantInfo();
+    const id = this.tenantId();
+    if (!id) {
+      return null;
+    }
+
+    return {
+      id,
+      name: info?.name ?? `Tenant ${id.slice(-6)}`,
+    };
+  });
+
+  private readonly superAdminTenantViewSidebar = computed<MenuItem[]>(() => {
     return [
       {
         label: 'Dashboard',
         icon: 'pi pi-fw pi-home',
         routerLink: `/admin/${this.tenantId()}/dashboard`
-      },
-      {
-        label: 'Tenants',
-        icon: 'pi pi-fw pi-building',
-        routerLink: `/admin/${this.tenantId()}/tenants`
       },
       {
         label: 'Productos',
@@ -87,7 +94,8 @@ export class LayoutAdminData {
         icon: 'pi pi-fw pi-clock',
         routerLink: `/admin/${this.tenantId()}/history`
       }
-  ]})
+    ];
+  });
 
   private readonly superAdminSidebar = signal<MenuItem[]>([
     {
@@ -124,11 +132,6 @@ export class LayoutAdminData {
       label: 'Dashboard',
       icon: 'pi pi-fw pi-home',
       routerLink: `/app/${this.tenantId()}/dashboard`
-    },
-    {
-      label: 'Tenants',
-      icon: 'pi pi-fw pi-building',
-      routerLink: `/app/${this.tenantId()}/tenants`
     },
     {
       label: 'Productos',
@@ -168,6 +171,6 @@ export class LayoutAdminData {
       icon: 'pi pi-fw pi-clock',
       routerLink: `/app/${this.tenantId()}/history`
     }
-  ]})
+  ]});
 
 }

@@ -1,22 +1,50 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
+import { Router } from '@angular/router';
+import { LayoutAdminData } from '../../services/layout-admin-data';
+import { TenantContext } from '../../../../../@core/services/tenant/tenant-context';
+import { TenantApi } from '../../../../super-admin/tenants/services/tenant-api';
+import { take } from 'rxjs';
 
 @Component({
   selector: 'app-header-auth-layout',
   imports: [ButtonModule],
   template: `
     <div class="header-bar">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true">Admin</span>
-        <span class="brand-name">Panel</span>
+      <div class="brand-wrap">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">Admin</span>
+          <span class="brand-name">Panel</span>
+        </div>
+
+        @if (tenantViewLabel(); as tenant) {
+          <div class="tenant-pill" aria-live="polite">
+            <span class="tenant-mode">Vista tenant</span>
+            <span class="tenant-name">{{ tenant.name }}</span>
+          </div>
+        }
       </div>
-      <p-button
-        label="Admin user"
-        icon="pi pi-user"
-        styleClass="user-button p-button-rounded p-button-outlined"
-        severity="secondary"
-        aria-label="Cuenta del usuario"
-      />
+
+      <div class="header-actions">
+        @if (isTenantView()) {
+          <p-button
+            label="Salir de vista tenant"
+            icon="pi pi-arrow-left"
+            styleClass="p-button-outlined"
+            severity="contrast"
+            (onClick)="exitTenantView()"
+            aria-label="Salir de vista tenant"
+          />
+        }
+
+        <p-button
+          label="Admin user"
+          icon="pi pi-user"
+          styleClass="user-button p-button-rounded p-button-outlined"
+          severity="secondary"
+          aria-label="Cuenta del usuario"
+        />
+      </div>
     </div>
   `,
   styles: `
@@ -44,6 +72,20 @@ import { ButtonModule } from 'primeng/button';
       letter-spacing: 0.02em;
     }
 
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      min-width: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
     .brand-mark {
       display: inline-flex;
       align-items: center;
@@ -59,6 +101,34 @@ import { ButtonModule } from 'primeng/button';
     .brand-name {
       font-size: 1.05rem;
       color: var(--text-color);
+    }
+
+    .tenant-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0.6rem;
+      border: 1px solid var(--surface-border);
+      border-radius: 9999px;
+      background: rgba(15, 23, 42, 0.03);
+      color: var(--text-color);
+      min-width: 0;
+    }
+
+    .tenant-mode {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-color-secondary);
+    }
+
+    .tenant-name {
+      font-size: 0.82rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 18rem;
     }
 
     .user-button {
@@ -78,11 +148,63 @@ import { ButtonModule } from 'primeng/button';
         gap: 0.75rem;
       }
 
+      .brand-wrap {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.4rem;
+      }
+
       .brand-name {
         font-size: 1rem;
+      }
+
+      .tenant-name {
+        max-width: 11rem;
       }
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class HeaderAuthLayout {}
+export class HeaderAuthLayout {
+  private readonly router = inject(Router);
+  private readonly layoutData = inject(LayoutAdminData);
+  private readonly tenantContext = inject(TenantContext);
+  private readonly tenantApi = inject(TenantApi);
+
+  protected readonly isTenantView = this.layoutData.isTenantView;
+  protected readonly tenantViewLabel = this.layoutData.tenantViewLabel;
+
+  constructor() {
+    effect(() => {
+      if (!this.isTenantView()) {
+        return;
+      }
+
+      const tenantId = this.tenantContext.activeTenantId();
+      const info = this.tenantContext.tenantInfo();
+
+      if (!tenantId || info?.id === tenantId) {
+        return;
+      }
+
+      this.tenantApi
+        .list({ search: '', status: '', page: 1, pageSize: 50 })
+        .pipe(take(1))
+        .subscribe({
+          next: (result) => {
+            const tenant = result.data.find((item) => item.id === tenantId);
+            if (tenant) {
+              this.tenantContext.setTenantInfo({ id: tenant.id, name: tenant.name });
+            }
+          },
+          error: () => undefined,
+          complete: () => undefined,
+        });
+    });
+  }
+
+  protected exitTenantView(): void {
+    this.tenantContext.clear();
+    this.router.navigate(['/admin/tenants']);
+  }
+}

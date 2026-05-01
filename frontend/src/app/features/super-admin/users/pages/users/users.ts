@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService, MessageService } from 'primeng/api';
+import { ActivatedRoute } from '@angular/router';
 
 import { UserFilters } from '../../components/user-filters/user-filters';
 import { UserTable } from '../../components/user-table/user-table';
@@ -22,6 +23,8 @@ import { UserFormValue, UserStore } from '../../services/user-store';
         [filters]="filters()"
         [roleOptions]="roleOptions()"
         [statusOptions]="statusOptions()"
+        [showCreate]="showCreate()"
+        [showRoleFilter]="showRoleFilter()"
         (searchChanged)="onSearch($event)"
         (roleChanged)="onRoleChange($event)"
         (statusChanged)="onStatusChange($event)"
@@ -58,6 +61,7 @@ import { UserFormValue, UserStore } from '../../services/user-store';
         [meta]="meta()"
         [loading]="loading()"
         [pageSizeOptions]="pageSizeOptions"
+        [showActions]="showActions()"
         (edit)="onEdit($event)"
         (toggleStatus)="onToggleStatus($event)"
         (pageChange)="onPageChange($event)"
@@ -95,6 +99,15 @@ export default class UsersPage {
   private readonly destroyRef = inject(DestroyRef);
   private readonly messages = inject(MessageService);
   private readonly confirmation = inject(ConfirmationService);
+  private readonly route = inject(ActivatedRoute);
+
+  constructor() {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (params) => this.store.setScope(params.get('tenantId')),
+      error: () => this.store.setScope(this.route.snapshot.paramMap.get('tenantId')),
+      complete: () => undefined,
+    });
+  }
 
   protected readonly filters = this.store.filters;
   protected readonly roleOptions = this.store.roleOptions;
@@ -106,38 +119,41 @@ export default class UsersPage {
   protected readonly modalOpen = this.store.modalOpen;
   protected readonly selectedUser = this.store.selectedUser;
   protected readonly stats = this.store.stats;
+  protected readonly showCreate = this.store.showCreate;
+  protected readonly showRoleFilter = this.store.showRoleFilter;
+  protected readonly showActions = this.store.showActions;
 
   protected readonly pageSizeOptions = [10, 25, 50];
 
-  onSearch(term: string) {
+  onSearch(term: string): void {
     this.store.setSearch(term);
   }
 
-  onRoleChange(role: UserRole | '') {
+  onRoleChange(role: UserRole | ''): void {
     this.store.setRole(role ?? '');
   }
 
-  onStatusChange(status: UserStatus | '') {
+  onStatusChange(status: UserStatus | ''): void {
     this.store.setStatus(status ?? '');
   }
 
-  onPageChange(change: { page: number; pageSize: number }) {
+  onPageChange(change: { page: number; pageSize: number }): void {
     this.store.setPage(change.page, change.pageSize);
   }
 
-  onCreateUser() {
+  onCreateUser(): void {
     this.store.openCreate();
   }
 
-  onEdit(user: UserDTO) {
+  onEdit(user: UserDTO): void {
     this.store.openEdit(user);
   }
 
-  onCancelModal() {
+  onCancelModal(): void {
     this.store.closeModal();
   }
 
-  onSubmitUser(payload: UserFormValue) {
+  onSubmitUser(payload: UserFormValue): void {
     const isEdit = Boolean(payload.id);
     this.store
       .saveUser(payload)
@@ -158,7 +174,7 @@ export default class UsersPage {
       });
   }
 
-  onToggleStatus(user: UserDTO) {
+  onToggleStatus(user: UserDTO): void {
     const action = user.status === 'active' ? 'Suspender' : 'Reactivar';
     this.confirmation.confirm({
       header: 'Confirmar estado',
@@ -181,11 +197,11 @@ export default class UsersPage {
     });
   }
 
-  refresh() {
+  refresh(): void {
     this.store.load();
   }
 
-  onClearFilters() {
+  onClearFilters(): void {
     this.store.resetFilters();
   }
 

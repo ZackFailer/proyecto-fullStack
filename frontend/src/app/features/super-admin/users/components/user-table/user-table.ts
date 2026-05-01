@@ -41,7 +41,9 @@ import { UserDTO, UserMeta, UserStatus } from '../../interfaces/user';
             <th>Estado</th>
             <th>Último acceso</th>
             <th>Creado</th>
-            <th class="text-center">Acciones</th>
+            @if (showActions()) {
+              <th class="text-center">Acciones</th>
+            }
           </tr>
         </ng-template>
 
@@ -75,31 +77,33 @@ import { UserDTO, UserMeta, UserStatus } from '../../interfaces/user';
             <td>
               <span class="text-sm text-surface-700">{{ user.createdAt | date: 'mediumDate' }}</span>
             </td>
-            <td class="text-center">
-              <div class="flex items-center justify-center gap-2">
-                <p-button
-                  size="small"
-                  icon="pi pi-pencil"
-                  styleClass="p-button-rounded p-button-text"
-                  (onClick)="edit.emit(user)"
-                  aria-label="Editar usuario"
-                ></p-button>
-                <p-button
-                  size="small"
-                  [icon]="user.status === 'active' ? 'pi pi-ban' : 'pi pi-check'"
-                  [severity]="user.status === 'active' ? 'danger' : 'success'"
-                  styleClass="p-button-rounded"
-                  (onClick)="toggleStatus.emit(user)"
-                  [ariaLabel]="user.status === 'active' ? 'Suspender' : 'Reactivar'"
-                ></p-button>
-              </div>
-            </td>
+            @if (showActions()) {
+              <td class="text-center">
+                <div class="flex items-center justify-center gap-2">
+                  <p-button
+                    size="small"
+                    icon="pi pi-pencil"
+                    styleClass="p-button-rounded p-button-text"
+                    (onClick)="edit.emit(user)"
+                    aria-label="Editar usuario"
+                  ></p-button>
+                  <p-button
+                    size="small"
+                    [icon]="user.status === 'active' ? 'pi pi-ban' : 'pi pi-check'"
+                    [severity]="user.status === 'active' ? 'danger' : 'success'"
+                    styleClass="p-button-rounded"
+                    (onClick)="toggleStatus.emit(user)"
+                    [ariaLabel]="user.status === 'active' ? 'Suspender' : 'Reactivar'"
+                  ></p-button>
+                </div>
+              </td>
+            }
           </tr>
         </ng-template>
 
         <ng-template pTemplate="emptymessage">
           <tr>
-            <td colspan="6" class="py-10 text-center text-sm text-surface-600">
+            <td [attr.colspan]="showActions() ? 6 : 5" class="py-10 text-center text-sm text-surface-600">
               No se encontraron usuarios con los filtros seleccionados.
             </td>
           </tr>
@@ -125,6 +129,7 @@ export class UserTable {
   readonly meta = input.required<UserMeta>();
   readonly loading = input<boolean>(false);
   readonly pageSizeOptions = input<number[]>([10, 25, 50]);
+  readonly showActions = input<boolean>(true);
 
   readonly edit = output<UserDTO>();
   readonly toggleStatus = output<UserDTO>();

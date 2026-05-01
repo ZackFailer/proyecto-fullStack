@@ -95,6 +95,10 @@ export class TenantStore {
 
 	selectTenant(tenantId: string): void {
 		this.tenantContext.setActiveTenantId(tenantId);
+		const tenant = this.tenants().find((item) => item.id === tenantId) ?? null;
+		this.tenantContext.setTenantInfo(
+			tenant ? { id: tenant.id, name: tenant.name } : null
+		);
 
 		if (this.auth.currentUser()?.role === 'super-admin') {
 			this.router.navigate(['/admin', tenantId, 'dashboard']);

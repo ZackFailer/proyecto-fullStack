@@ -12,10 +12,18 @@ export class TenantContext {
 
 	setActiveTenantId(value: string | null): void {
 		const cleanValue = value?.trim() ?? null;
-		this.tenantId.set(cleanValue && cleanValue.length > 0 ? cleanValue : null);
-    console.log('se cambio el tenantId:', this.tenantId());
-    
+		const next = cleanValue && cleanValue.length > 0 ? cleanValue : null;
+		const current = this.tenantId();
+
+		if (current !== next) {
+			this.tenantId.set(next);
+			this.tenantInfo.set(null);
+		}
 	}
+
+  setTenantInfo(value: { id: string; name: string } | null): void {
+    this.tenantInfo.set(value);
+  }
 
 	clear(): void {
 		this.tenantId.set(null);

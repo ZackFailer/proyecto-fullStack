@@ -19,7 +19,14 @@ import {
 })
 export class UserApi {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = '/api/users';
+
+  private resolveApiUrl(tenantId?: string | null): string {
+    if (tenantId) {
+      return `/api/tenants/${tenantId}/users`;
+    }
+
+    return '/api/users';
+  }
 
   private readonly mockUsers: UserDTO[] = [
     {
@@ -84,57 +91,64 @@ export class UserApi {
     }
   ];
 
-  list(query: UserQuery): Observable<UserListResponse> {
-    const params = this.buildParams(query);
+  list(query: UserQuery, options?: { tenantId?: string | null; globalSuperAdminOnly?: boolean }): Observable<UserListResponse> {
+    const apiUrl = this.resolveApiUrl(options?.tenantId);
+    const params = this.buildParams(query, options?.globalSuperAdminOnly ?? false);
     return this.http
-      .get<BackendEnvelope<BackendUserListData>>(this.apiUrl, { params })
+      .get<BackendEnvelope<BackendUserListData>>(apiUrl, { params })
       .pipe(
         map((response) => this.normalizeListResponse(response)),
         catchError(() => this.mockList(query))
       );
   }
 
-  getById(id: string): Observable<ApiEnvelope<UserDTO>> {
+  getById(id: string, tenantId?: string | null): Observable<ApiEnvelope<UserDTO>> {
+    const apiUrl = this.resolveApiUrl(tenantId);
     return this.http
-      .get<BackendEnvelope<UserDTO>>(`${this.apiUrl}/${id}`)
+      .get<BackendEnvelope<UserDTO>>(`${apiUrl}/${id}`)
       .pipe(
         map((response) => ({ data: this.normalizeUser(response.data) })),
         catchError(() => this.mockGet(id))
       );
   }
 
-  create(payload: CreateUserPayload): Observable<ApiEnvelope<UserDTO>> {
+  create(payload: CreateUserPayload, tenantId?: string | null): Observable<ApiEnvelope<UserDTO>> {
+    const apiUrl = this.resolveApiUrl(tenantId);
     return this.http
-      .post<BackendEnvelope<UserDTO>>(this.apiUrl, payload)
+      .post<BackendEnvelope<UserDTO>>(apiUrl, payload)
       .pipe(
         map((response) => ({ data: this.normalizeUser(response.data) })),
         catchError(() => this.mockCreate(payload))
       );
   }
 
-  update(id: string, payload: UpdateUserPayload): Observable<ApiEnvelope<UserDTO>> {
+  update(id: string, payload: UpdateUserPayload, tenantId?: string | null): Observable<ApiEnvelope<UserDTO>> {
+    const apiUrl = this.resolveApiUrl(tenantId);
     return this.http
-      .patch<BackendEnvelope<UserDTO>>(`${this.apiUrl}/${id}`, payload)
+      .patch<BackendEnvelope<UserDTO>>(`${apiUrl}/${id}`, payload)
       .pipe(
         map((response) => ({ data: this.normalizeUser(response.data) })),
         catchError(() => this.mockUpdate(id, payload))
       );
   }
 
-  changeStatus(id: string, status: UserStatus): Observable<ApiEnvelope<UserDTO>> {
+  changeStatus(id: string, status: UserStatus, tenantId?: string | null): Observable<ApiEnvelope<UserDTO>> {
+    const apiUrl = this.resolveApiUrl(tenantId);
     return this.http
-      .patch<BackendEnvelope<UserDTO>>(`${this.apiUrl}/${id}`, { status })
+      .patch<BackendEnvelope<UserDTO>>(`${apiUrl}/${id}`, { status })
       .pipe(
         map((response) => ({ data: this.normalizeUser(response.data) })),
         catchError(() => this.mockUpdate(id, { status }))
       );
   }
 
-  private buildParams(query: UserQuery): HttpParams {
+  private buildParams(query: UserQuery, globalSuperAdminOnly: boolean): HttpParams {
+    const role = globalSuperAdminOnly ? 'super-admin' : query.role;
+
     const params = new HttpParams({
       fromObject: {
         ...(query.search ? { search: query.search } : {}),
-        ...(query.role ? { role: query.role } : {}),
+        ...(role ? { role } : {}),
         ...(query.status ? { status: query.status } : {}),
         page: String(query.page ?? 1),
         limit: String(query.pageSize ?? 10),

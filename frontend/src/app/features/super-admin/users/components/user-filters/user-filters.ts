@@ -31,7 +31,9 @@ interface Option<T> {
           <p class="text-sm text-surface-600">Filtra por rol, estado o busca por nombre y correo. Las acciones se mantienen en la misma vista.</p>
         </div>
         <div class="flex flex-wrap gap-2">
-          <p-button type="button" label="Crear usuario" icon="pi pi-plus" styleClass="p-button-success" (onClick)="createRequested.emit()" />
+          @if (showCreate()) {
+            <p-button type="button" label="Crear usuario" icon="pi pi-plus" styleClass="p-button-success" (onClick)="createRequested.emit()" />
+          }
           <p-button type="button" label="Refrescar" icon="pi pi-refresh" styleClass="p-button-text" (onClick)="refreshRequested.emit()" />
         </div>
       </div>
@@ -50,17 +52,21 @@ interface Option<T> {
           />
         </p-iconfield>
 
-        <p-select
-          class="w-full"
-          [options]="roleOptions()"
-          [ngModel]="filters().role"
-          (ngModelChange)="roleChanged.emit($event)"
-          optionLabel="label"
-          optionValue="value"
-          [showClear]="true"
-          placeholder="Filtrar por rol"
-          inputId="role-select"
-        />
+        @if (showRoleFilter()) {
+          <p-select
+            class="w-full"
+            [options]="roleOptions()"
+            [ngModel]="filters().role"
+            (ngModelChange)="roleChanged.emit($event)"
+            optionLabel="label"
+            optionValue="value"
+            [showClear]="true"
+            placeholder="Filtrar por rol"
+            inputId="role-select"
+          />
+        } @else {
+          <div></div>
+        }
 
         <p-select
           class="w-full"
@@ -100,6 +106,8 @@ export class UserFilters {
   readonly filters = input.required<FilterState>();
   readonly roleOptions = input.required<Option<UserRole>[]>();
   readonly statusOptions = input.required<Option<UserStatus>[]>();
+  readonly showCreate = input<boolean>(true);
+  readonly showRoleFilter = input<boolean>(true);
 
   readonly searchChanged = output<string>();
   readonly roleChanged = output<UserRole | ''>();
