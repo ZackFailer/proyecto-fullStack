@@ -89,7 +89,7 @@ interface Option<T> {
             }
           </label>
 
-          @if (!isEdit()) {
+@if (!isEdit()) {
             <div class="flex flex-col gap-2 text-sm text-surface-700">
               <label for="password"> Password </label>
               <p-password
@@ -108,6 +108,26 @@ interface Option<T> {
                 <span class="text-xs text-red-500"
                   >Minimo 12 caracteres, incluye mayusculas, minusculas, numero y simbolo.</span
                 >
+              }
+            </div>
+
+            <div class="flex flex-col gap-2 text-sm text-surface-700">
+              <label for="confirmPassword"> Confirmar Password </label>
+              <p-password
+                id="confirmPassword"
+                formControlName="confirmPassword"
+                [feedback]="false"
+                [toggleMask]="true"
+                fluid
+                placeholder="Repite la contrasena"
+                [promptLabel]="'Confirma tu contrasena'"
+              />
+              @if (form.controls.confirmPassword.invalid && form.controls.confirmPassword.touched) {
+                @if (form.controls.confirmPassword.errors?.['required']) {
+                  <span class="text-xs text-red-500">Confirma tu contrasena</span>
+                } @else if (form.controls.confirmPassword.errors?.['mismatch']) {
+                  <span class="text-xs text-red-500">Las contrasenas no coinciden</span>
+                }
               }
             </div>
           }
@@ -155,6 +175,34 @@ interface Option<T> {
 
         <p-divider></p-divider>
 
+@if (canShowDetailActions()) {
+          <div class="flex flex-wrap items-center gap-2">
+            @if (canChangePassword()) {
+              <p-button
+                type="button"
+                label="Cambiar contraseña"
+                icon="pi pi-key"
+                severity="info"
+                styleClass="p-button-sm"
+                (onClick)="requestChangePassword()"
+              />
+            }
+
+            @if (canRequestPasswordChange()) {
+              <p-button
+                type="button"
+                label="Solicitar cambio al super-admin"
+                icon="pi pi-send"
+                severity="warn"
+                styleClass="p-button-sm"
+                (onClick)="requestPasswordRequest()"
+              />
+            }
+          </div>
+
+          <p-divider></p-divider>
+        }
+
         <div class="flex items-center justify-between gap-2">
           <div class="text-xs text-surface-600">
             @if (isEdit()) {
@@ -199,24 +247,32 @@ export default class UserModal {
   readonly saving = input(false);
   readonly roleOptions = input.required<Option<UserRole>[]>();
   readonly statusOptions = input.required<Option<UserStatus>[]>();
+  readonly currentUserRole = input<UserRole>('admin');
+  readonly canMutate = input<boolean>(true);
 
-  readonly submitted = output<UserFormValue>();
+readonly submitted = output<UserFormValue>();
   readonly canceled = output<void>();
+  readonly changePasswordRequested = output<UserDTO>();
+  readonly passwordRequestRequested = output<UserDTO>();
 
   private readonly fb = inject(FormBuilder);
 
-  readonly form = this.fb.nonNullable.group({
-    firstName: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(30)]],
-    lastName: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(30)]],
-    email: [
-      '',
-      [Validators.required, Validators.email, Validators.minLength(5), Validators.maxLength(60)],
-    ],
-    role: this.fb.nonNullable.control<UserRole>('viewer', Validators.required),
-    status: this.fb.nonNullable.control<UserStatus>('active', Validators.required),
-    phone: this.fb.control<string | null>(null, [Validators.maxLength(20)]),
-    password: this.fb.control<string>('', [Validators.required]),
-  });
+  readonly form = this.fb.nonNullable.group(
+    {
+      firstName: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(30)]],
+      lastName: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(30)]],
+      email: [
+        '',
+        [Validators.required, Validators.email, Validators.minLength(5), Validators.maxLength(60)],
+      ],
+      role: this.fb.nonNullable.control<UserRole>('viewer', Validators.required),
+      status: this.fb.nonNullable.control<UserStatus>('active', Validators.required),
+      phone: this.fb.control<string | null>(null, [Validators.maxLength(20)]),
+      password: this.fb.control<string>('', [Validators.required]),
+      confirmPassword: this.fb.control<string>('', [Validators.required]),
+    },
+    { validators: passwordMatchValidator }
+  );
 
   readonly isEdit = computed(() => Boolean(this.user()));
 
@@ -226,6 +282,40 @@ export default class UserModal {
       return null;
     }
     return `Última modificación por: ${userValue.updatedByName}`;
+  });
+
+  readonly canShowDetailActions = computed(() => {
+    return this.isEdit() && this.canMutate() && Boolean(this.user());
+  });
+
+  readonly canChangePassword = computed(() => {
+    const currentUserRole = this.currentUserRole();
+    const targetUser = this.user();
+
+    if (!targetUser) {
+      return false;
+    }
+
+    if (currentUserRole === 'super-admin') {
+      return true;
+    }
+
+    if (currentUserRole === 'admin') {
+      return targetUser.role === 'operator' || targetUser.role === 'viewer';
+    }
+
+    return false;
+  });
+
+  readonly canRequestPasswordChange = computed(() => {
+    const currentUserRole = this.currentUserRole();
+    const targetUser = this.user();
+
+    if (!targetUser) {
+      return false;
+    }
+
+    return currentUserRole === 'admin' && (targetUser.role === 'operator' || targetUser.role === 'viewer');
   });
 
   private formStateKey: string | null = null;
@@ -257,11 +347,13 @@ export default class UserModal {
             status: current.status,
             phone: current.phone ?? null,
             password: '',
+            confirmPassword: '',
           },
           { emitEvent: false }
         );
         this.form.controls.email.disable({ emitEvent: false });
         this.form.controls.password.disable({ emitEvent: false });
+        this.form.controls.confirmPassword.disable({ emitEvent: false });
       } else {
         this.form.reset(
           {
@@ -272,11 +364,13 @@ export default class UserModal {
             status: 'active',
             phone: null,
             password: '',
+            confirmPassword: '',
           },
           { emitEvent: false }
         );
         this.form.controls.email.enable({ emitEvent: false });
         this.form.controls.password.enable({ emitEvent: false });
+        this.form.controls.confirmPassword.enable({ emitEvent: false });
       }
     });
 
@@ -289,7 +383,6 @@ export default class UserModal {
 
   submit() {
     if (this.form.invalid) {
-      console.log(this.form);
       this.form.markAllAsTouched();
       return;
     }
@@ -304,9 +397,26 @@ export default class UserModal {
       status: raw.status,
       phone: raw.phone,
       password: raw.password || undefined,
+      confirmPassword: raw.confirmPassword || undefined,
     };
 
     this.submitted.emit(payload);
+  }
+
+  requestChangePassword(): void {
+    const user = this.user();
+    if (!user) {
+      return;
+    }
+    this.changePasswordRequested.emit(user);
+  }
+
+requestPasswordRequest(): void {
+    const user = this.user();
+    if (!user) {
+      return;
+    }
+    this.passwordRequestRequested.emit(user);
   }
 }
 
@@ -325,6 +435,20 @@ function passwordStrengthValidator(control: AbstractControl) {
   return hasMinLength && hasUpper && hasLower && hasNumber && hasSymbol
     ? null
     : { weakPassword: true };
+}
+
+/**
+ * Validates that password matches confirmPassword
+ */
+function passwordMatchValidator(group: AbstractControl) {
+  const password = group.get('password')?.value;
+  const confirmPassword = group.get('confirmPassword')?.value;
+
+  if (!password || !confirmPassword) {
+    return null;
+  }
+
+  return password === confirmPassword ? null : { mismatch: true };
 }
 
 function splitFullName(fullName: string): { firstName: string; lastName: string } {

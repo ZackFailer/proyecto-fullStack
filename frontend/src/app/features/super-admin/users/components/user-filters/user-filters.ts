@@ -28,7 +28,7 @@ interface Option<T> {
         <div class="space-y-2">
           <p class="text-xs uppercase tracking-[0.28em] text-emerald-700">Control centralizado</p>
           <p class="text-lg font-semibold text-surface-900">Gestiona usuarios, roles y estados</p>
-          <p class="text-sm text-surface-600">Filtra por rol, estado o busca por nombre y correo. Las acciones se mantienen en la misma vista.</p>
+          <p class="text-sm text-surface-600">Filtra por rol, estado o busca por nombre y correo. Las acciones se gestionan desde el modal de detalle.</p>
         </div>
         <div class="flex flex-wrap gap-2">
           @if (showCreate()) {

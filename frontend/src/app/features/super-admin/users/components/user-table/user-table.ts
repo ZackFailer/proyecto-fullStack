@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { TableModule, TablePageEvent } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
@@ -133,11 +133,16 @@ export class UserTable {
   readonly meta = input.required<UserMeta>();
   readonly loading = input<boolean>(false);
   readonly pageSizeOptions = input<number[]>([10, 25, 50]);
-  readonly showActions = input<boolean>(true);
+  readonly currentUserRole = input<string>('admin');
 
   readonly edit = output<UserDTO>();
   readonly toggleStatus = output<UserDTO>();
   readonly pageChange = output<{ page: number; pageSize: number }>();
+
+  readonly showActions = computed(() => {
+    const role = this.currentUserRole();
+    return role === 'admin' || role === 'super-admin' || role === 'operator';
+  });
 
   statusSeverity(status: UserStatus) {
     if (status === 'active') return 'success';
