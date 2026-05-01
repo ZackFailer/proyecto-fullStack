@@ -122,55 +122,79 @@ export class LayoutAdminData {
       label: 'Historial',
       icon: 'pi pi-fw pi-clock',
       routerLink: '/admin/history'
+    },
+    {
+      label: 'Intentos de Login',
+      icon: 'pi pi-fw pi-shield',
+      routerLink: '/admin/login-attempts'
     }
   ])
 
-  private readonly tenantSidebar = computed<MenuItem[]>(() => {
+private readonly tenantSidebar = computed<MenuItem[]>(() => {
+    const tenantId = this.tenantId();
+    const role = this.auth.currentUser()?.role;
+    const canAccessPrivileged = role === 'admin' || role === 'operator';
+    const canAccessUsers = role === 'admin';
 
-    return [
+    if (!tenantId) {
+      return [];
+    }
+
+    const items: MenuItem[] = [
     {
       label: 'Dashboard',
       icon: 'pi pi-fw pi-home',
-      routerLink: `/app/${this.tenantId()}/dashboard`
+      routerLink: `/app/${tenantId}/dashboard`
     },
     {
       label: 'Productos',
       icon: 'pi pi-fw pi-box',
       items: [
-        { label: 'Listado', icon: 'pi pi-list', routerLink: `/app/${this.tenantId()}/products` },
-        { label: 'Product Settings', icon: 'pi pi-cog', routerLink: `/app/${this.tenantId()}/product-settings` },
+        { label: 'Listado', icon: 'pi pi-list', routerLink: `/app/${tenantId}/products` },
+        { label: 'Product Settings', icon: 'pi pi-cog', routerLink: `/app/${tenantId}/product-settings` },
       ]
-    },
-    {
-      label: 'Usuarios',
-      icon: 'pi pi-fw pi-users',
-      routerLink: `/app/${this.tenantId()}/users`
     },
     {
       label: 'Inventario',
       icon: 'pi pi-fw pi-briefcase',
-      routerLink: `/app/${this.tenantId()}/inventory`
+      routerLink: `/app/${tenantId}/inventory`
     },
     {
       label: 'Clientes',
       icon: 'pi pi-fw pi-id-card',
-      routerLink: `/app/${this.tenantId()}/customers`
+      routerLink: `/app/${tenantId}/customers`
     },
     {
       label: 'Proveedores',
       icon: 'pi pi-fw pi-id-card',
-      routerLink: `/app/${this.tenantId()}/providers`
-    },
-    {
-      label: 'Auditoría y Conciliaciones',
-      icon: 'pi pi-fw pi-shield',
-      routerLink: `/app/${this.tenantId()}/audit`
-    },
-    {
-      label: 'Historial',
-      icon: 'pi pi-fw pi-clock',
-      routerLink: `/app/${this.tenantId()}/history`
+      routerLink: `/app/${tenantId}/providers`
     }
-  ]});
+  ];
+
+    if (canAccessUsers) {
+      items.splice(2, 0, {
+        label: 'Usuarios',
+        icon: 'pi pi-fw pi-users',
+        routerLink: `/app/${tenantId}/users`
+      });
+    }
+
+    if (canAccessPrivileged) {
+      items.push(
+        {
+          label: 'Auditoría y Conciliaciones',
+          icon: 'pi pi-fw pi-shield',
+          routerLink: `/app/${tenantId}/audit`
+        },
+        {
+          label: 'Historial',
+          icon: 'pi pi-fw pi-clock',
+          routerLink: `/app/${tenantId}/history`
+        }
+      );
+    }
+
+    return items;
+  });
 
 }

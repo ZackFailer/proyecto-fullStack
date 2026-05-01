@@ -1,5 +1,6 @@
 import { Routes } from "@angular/router";
 import { tenantPrivilegedGuard } from '../../@core/guards/tenant-privileged.guard';
+import { tenantAdminGuard } from '../../@core/guards/tenant-admin.guard';
 /**
  * Tenant layout routes under /app/:tenantId/**
  * These routes are for regular tenant users (admin, operator, viewer).
@@ -28,7 +29,8 @@ const tenantLayoutRoutes: Routes = [
       },
       {
         path: 'users',
-        loadComponent: () => import('../super-admin/users/pages/users/users')
+        loadComponent: () => import('../super-admin/users/pages/users/users'),
+        canActivate: [tenantAdminGuard]
       },
       {
         path: 'inventory',
