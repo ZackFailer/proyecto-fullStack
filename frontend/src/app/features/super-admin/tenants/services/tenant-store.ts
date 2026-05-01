@@ -105,8 +105,8 @@ export class TenantStore {
 			return;
 		}
 
-		this.router.navigate(['/', tenantId, 'dashboard']);
-	}
+    this.router.navigate(['/app', tenantId, 'dashboard']);
+  }
 
 	openCreate(): void {
 		this.selectedTenant.set(null);

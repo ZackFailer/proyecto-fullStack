@@ -157,7 +157,24 @@ export default class Login {
     this.auth.authenticate(credentials).subscribe({
       next: () => {
         this.isLoading.set(false);
-        this.router.navigate(['/admin']);
+        const user = this.auth.currentUser();
+
+        if (!user) {
+          this.router.navigate(['/home']);
+          return;
+        }
+
+        if (user.role === 'super-admin') {
+          this.router.navigate(['/admin', 'dashboard']);
+          return;
+        }
+
+        if (user.clientId) {
+          this.router.navigate(['/app', user.clientId, 'dashboard']);
+          return;
+        }
+
+        this.router.navigate(['/home']);
       },
       error: (err) => {
         this.isLoading.set(false);
