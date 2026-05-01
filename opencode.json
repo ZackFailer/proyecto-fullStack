@@ -1,0 +1,36 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "AGENTS.md",
+    "backend/.github/copilot-instructions.md",
+    "frontend/.github/copilot-instructions.md"
+  ],
+  "agent": {
+    "backend": {
+      "description": "Backend API Agent - Express, TypeScript, MongoDB",
+      "mode": "all",
+      "prompt": "You are the Backend API Agent. Follow the instructions from backend/.github/copilot-instructions.md.\n\nLayered flow: routers → controllers → services → models\nES modules: use .js extensions in imports\nResponse envelope: { success: true, data: ... } or { success: false, code: ..., message: ... }\nTest: cd backend && npm run test",
+      "tools": {
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "grep": true,
+        "glob": true,
+        "read": true
+      }
+    },
+    "frontend": {
+      "description": "Frontend UI Agent - Angular 21, PrimeNG, Tailwind",
+      "mode": "all",
+      "prompt": "You are the Frontend UI Agent. Follow the instructions from frontend/.github/copilot-instructions.md.\n\nStandalone components, use signals and input()/output()\nUse OnPush change detection\nPrimeNG components + Tailwind utilities\nDev: cd frontend && npm start",
+      "tools": {
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "grep": true,
+        "glob": true,
+        "read": true
+      }
+    }
+  }
+}
