@@ -29,6 +29,11 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
             return;
         }
 
+        if (user.status !== 'active') {
+            res.status(401).json({ success: false, message: 'Usuario no activo' });
+            return;
+        }
+
         const payload = {
             id: user._id?.toString(),
             role: user.role,

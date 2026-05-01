@@ -44,6 +44,14 @@ You are the **Backend API Agent** for this workspace. Default to the Backend API
 - Validate JWTs in middleware; set `req.user` with a typed payload. Reject missing/invalid tokens with consistent 401/403 responses.
 - For cookies/tokens, set `httpOnly`, `sameSite`, and `secure` (in production); never expose secrets in responses.
 
+## Role Permissions (mandatory)
+- Always enforce role-based behavior when implementing or updating features:
+  - `viewer`: read-only access (can only view data).
+  - `operator`: can view and create only specific features; ask for confirmation when scope is unclear before enabling create actions.
+  - `admin`: can view, create, and edit.
+- Apply these rules in routers/controllers/services and tests; never assume elevated permissions by default.
+- Return consistent `403` responses when a role attempts an action outside its permissions.
+
 ## Testing & Logging
 - Favor integration tests for routers/controllers using the standardized envelope; unit test services with mocked models.
 - Use consistent logging (e.g., `morgan` for HTTP, structured logs for errors); avoid `console.log` in production paths.

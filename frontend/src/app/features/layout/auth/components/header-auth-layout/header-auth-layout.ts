@@ -1,14 +1,17 @@
 import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
+import { MenuModule } from 'primeng/menu';
 import { Router } from '@angular/router';
 import { LayoutAdminData } from '../../services/layout-admin-data';
 import { TenantContext } from '../../../../../@core/services/tenant/tenant-context';
 import { TenantApi } from '../../../../super-admin/tenants/services/tenant-api';
+import { Auth } from '../../../../../@core/services/auth/auth';
 import { take } from 'rxjs';
+import { MenuItem } from 'primeng/api';
 
 @Component({
   selector: 'app-header-auth-layout',
-  imports: [ButtonModule],
+  imports: [ButtonModule, MenuModule],
   template: `
     <div class="header-bar">
       <div class="brand-wrap">
@@ -37,12 +40,19 @@ import { take } from 'rxjs';
           />
         }
 
-        <p-button
+<p-button
           label="Admin user"
           icon="pi pi-user"
           styleClass="user-button p-button-rounded p-button-outlined"
           severity="secondary"
           aria-label="Cuenta del usuario"
+          (onClick)="userMenu.toggle($event)"
+        />
+        <p-menu
+          #userMenu
+          [model]="menuItems"
+          [popup]="true"
+          appendTo="body"
         />
       </div>
     </div>
@@ -170,9 +180,18 @@ export class HeaderAuthLayout {
   private readonly layoutData = inject(LayoutAdminData);
   private readonly tenantContext = inject(TenantContext);
   private readonly tenantApi = inject(TenantApi);
+  private readonly auth = inject(Auth);
 
   protected readonly isTenantView = this.layoutData.isTenantView;
   protected readonly tenantViewLabel = this.layoutData.tenantViewLabel;
+
+  protected readonly menuItems: MenuItem[] = [
+    {
+      label: 'Cerrar sesión',
+      icon: 'pi pi-sign-out',
+      command: () => this.auth.logout(),
+    },
+  ];
 
   constructor() {
     effect(() => {

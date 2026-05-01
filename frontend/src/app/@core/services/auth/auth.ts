@@ -3,6 +3,7 @@ import { tap } from 'rxjs/operators';
 import { ICredentials } from '../../interfaces/i-credentials';
 import { AuthApi, LoginResponse } from './auth-api';
 import { Router } from '@angular/router';
+import { TenantContext } from '../tenant/tenant-context';
 
 export interface AuthUser {
   id: string;
@@ -18,6 +19,7 @@ export class Auth {
   private readonly authApi = inject(AuthApi);
   private readonly userKey = 'auth_user';
   private readonly router = inject(Router);
+  private readonly tenantContext = inject(TenantContext);
 
   private user = signal<AuthUser | null>(null);
 
@@ -40,6 +42,12 @@ export class Auth {
   public clearSession() {
     this.user.set(null);
     sessionStorage.removeItem(this.userKey);
+  }
+
+  public logout(): void {
+    this.clearSession();
+    this.tenantContext.clear();
+    this.router.navigate(['/login']);
   }
 
   public isAuthenticated():boolean {

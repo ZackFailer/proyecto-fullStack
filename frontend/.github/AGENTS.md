@@ -26,5 +26,10 @@ description: "Use when: choosing the right agent for Angular frontend work (sign
 - Honor the Angular guidance in `.github/copilot-instructions.md` (signals, `input()`/`output()`, avoid `ngClass`/`ngStyle`, use OnPush).
 - Keep accessibility in mind: focus order, ARIA labels, and color contrast.
 - Reuse shared components/services before creating new ones; keep pages under `pages/` and feature-specific components under `components/`.
+- Enforce role permissions in every feature:
+  - `viewer`: only view/read actions.
+  - `operator`: view and create only specific features; ask for confirmation when create scope is unclear.
+  - `admin`: view, create, and edit.
+- Reflect permissions in UI routing/guards/actions; hide or disable restricted actions and never assume elevated permissions.
 - Ask for missing UX/content details when unclear (labels, error messages, empty states).
 - Stack notes: PrimeNG 21.1.3 with Tailwind 4/PostCSS (`@tailwindcss/postcss`, `tailwindcss-primeui`). Prefer PrimeNG components styled via Tailwind utilities; avoid inline styles.

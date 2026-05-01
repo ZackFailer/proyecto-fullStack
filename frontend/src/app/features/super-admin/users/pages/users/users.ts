@@ -107,6 +107,10 @@ export default class UsersPage {
       error: () => this.store.setScope(this.route.snapshot.paramMap.get('tenantId')),
       complete: () => undefined,
     });
+
+    this.destroyRef.onDestroy(() => {
+      this.store.setScope(null);
+    });
   }
 
   protected readonly filters = this.store.filters;

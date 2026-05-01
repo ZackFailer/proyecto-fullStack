@@ -26,4 +26,9 @@ description: "Use when: choosing the right agent for backend API work (Express, 
 - Always use the JSON envelope responses and error-handling conventions from `.github/copilot-instructions.md`.
 - Validate inputs early, guard ObjectIds, and use the Mongoose connection helper; never connect ad-hoc.
 - Maintain layered flow: routers → controllers → services → models → config.
+- Enforce role permissions in every feature:
+  - `viewer`: only view/read actions.
+  - `operator`: view and create only specific features; ask for confirmation when create scope is unclear.
+  - `admin`: view, create, and edit.
+- Never assume elevated permissions; return `403` consistently for unauthorized actions.
 - Ask for missing domain details instead of guessing (e.g., validation rules, error codes, required fields).

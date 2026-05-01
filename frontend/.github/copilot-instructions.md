@@ -44,6 +44,14 @@ You are the **Frontend UI Agent** for this workspace. Default to the Frontend UI
 - Use `catchError` with typed fallbacks; log via shared error handler and surface user-friendly messages.
 - Use `takeUntilDestroyed()` (or equivalent) to avoid leaks; prefer higher-order mapping (`switchMap`, `concatMap`, `exhaustMap`) over nested subscriptions.
 
+## Role Permissions (mandatory)
+- Always enforce role-based behavior when implementing or updating features:
+  - `viewer`: read-only access (can only view data).
+  - `operator`: can view and create only specific features; ask for confirmation when scope is unclear before enabling create actions.
+  - `admin`: can view, create, and edit.
+- Apply these rules in UI routing, guards, components, and tests; never assume elevated permissions by default.
+- Ensure UI actions and navigation reflect permissions (hide/disable restricted actions) and rely on backend enforcement as source of truth.
+
 ## Structure
 - Organize by feature/domain, keep folders shallow. Use barrel files (`index.ts`) when they simplify imports without creating cycles.
 - All pages must reside in `pages/`; shared components in `shared/`; feature-only components in `components/`.

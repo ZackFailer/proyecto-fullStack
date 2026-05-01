@@ -3,7 +3,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, map, tap, Observable } from 'rxjs';
 import { UserApi } from './user-api';
 import { Auth } from '../../../../@core/services/auth/auth';
-import { TenantContext } from '../../../../@core/services/tenant/tenant-context';
 import {
   CreateUserPayload,
   UpdateUserPayload,
@@ -33,7 +32,6 @@ export class UserStore {
   private readonly api = inject(UserApi);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(Auth);
-  private readonly tenantContext = inject(TenantContext);
 
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -99,11 +97,6 @@ export class UserStore {
       ...prev,
       role: this.isGlobalScope() ? 'super-admin' : prev.role,
     }));
-
-    effect(() => {
-      const tenantId = this.scopedTenantId();
-      this.tenantContext.setActiveTenantId(tenantId);
-    });
 
     effect(() => {
       // Automatically refresh when filters change
