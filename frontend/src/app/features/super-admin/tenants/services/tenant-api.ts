@@ -103,6 +103,10 @@ export class TenantApi {
 	}
 
 	private normalizeTenant(item: TenantListItemDTO): TenantListItemDTO {
+		// Mapear settings a propiedades root para consumo UI
+		const currency = item.settings?.currency ?? item.currency;
+		const branding = item.settings?.branding ?? item.branding;
+
 		return {
 			...item,
 			id: item.id,
@@ -111,6 +115,8 @@ export class TenantApi {
 			documentType: item.documentType,
 			documentNumber: item.documentNumber,
 			status: item.status,
+			currency,
+			branding,
 		};
 	}
 

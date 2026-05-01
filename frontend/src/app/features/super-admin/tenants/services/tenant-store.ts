@@ -8,6 +8,7 @@ import { ISelectList } from '../../../../@core/interfaces/i-select-list';
 import { IChipItem } from '../../../../shared/chips/chip-list';
 import {
 	CreateTenantPayload,
+	TenantBranding,
 	TenantFormValue,
 	TenantListItemDTO,
 	TenantQuery,
@@ -136,7 +137,7 @@ export class TenantStore {
 	}
 
 	private toCreatePayload(value: TenantFormValue): CreateTenantPayload {
-		const branding = this.buildBrandingPayload(value);
+		const settings = this.buildSettingsPayload(value);
 
 		return {
 			slug: value.slug.trim().toLowerCase(),
@@ -147,15 +148,13 @@ export class TenantStore {
 			email: this.toOptional(value.email)?.toLowerCase(),
 			phone: this.toOptional(value.phone),
 			address: this.toOptional(value.address),
-			timezone: this.toOptional(value.timezone),
-			currency: this.toOptional(value.currency)?.toUpperCase(),
 			status: value.status,
-			branding,
+			settings,
 		};
 	}
 
 	private toUpdatePayload(value: TenantFormValue): UpdateTenantPayload {
-		const branding = this.buildBrandingPayload(value);
+		const settings = this.buildSettingsPayload(value);
 
 		return {
 			name: value.name.trim(),
@@ -163,10 +162,8 @@ export class TenantStore {
 			email: this.toOptional(value.email)?.toLowerCase(),
 			phone: this.toOptional(value.phone),
 			address: this.toOptional(value.address),
-			timezone: this.toOptional(value.timezone),
-			currency: this.toOptional(value.currency)?.toUpperCase(),
 			status: value.status,
-			branding,
+			...(settings && { settings }),
 		};
 	}
 
@@ -175,7 +172,18 @@ export class TenantStore {
 		return trimmed.length > 0 ? trimmed : undefined;
 	}
 
-	private buildBrandingPayload(value: TenantFormValue): UpdateTenantPayload['branding'] {
+	private buildSettingsPayload(value: TenantFormValue): CreateTenantPayload['settings'] {
+		const branding = this.buildBrandingData(value);
+		const currency = this.toOptional(value.currency)?.toUpperCase() ?? 'USD';
+
+		if (!branding) {
+			return { currency };
+		}
+
+		return { currency, branding };
+	}
+
+	private buildBrandingData(value: TenantFormValue): TenantBranding | undefined {
 		const logoUrl = this.toOptional(value.brandingLogoUrl);
 		const primaryColor = this.toOptional(value.brandingPrimaryColor);
 		const secondaryColor = this.toOptional(value.brandingSecondaryColor);

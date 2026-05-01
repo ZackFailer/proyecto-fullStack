@@ -157,14 +157,6 @@ export const updateTenantHandler = async (req: AuthRequest, res: Response, next:
   try {
     if (!requireSuperAdmin(req, res)) return;
     if (rejectLegacyTenantFields(req, res)) return;
-    if (req.body.settings !== undefined) {
-      res.status(400).json({
-        success: false,
-        message: 'settings no es soportado en este endpoint. Use /tenants/:tenantId/settings',
-        code: 'UNSUPPORTED_FIELD',
-      });
-      return;
-    }
 
     const tenantId = typeof req.params.tenantId === 'string' ? req.params.tenantId : '';
     const updates: UpdateTenantInput = {};
@@ -175,6 +167,9 @@ export const updateTenantHandler = async (req: AuthRequest, res: Response, next:
     if (req.body.phone !== undefined) updates.phone = String(req.body.phone);
     if (req.body.address !== undefined) updates.address = String(req.body.address);
     if (req.body.status !== undefined) updates.status = req.body.status;
+
+    const settings = parseSettingsInput(req.body.settings);
+    if (settings !== undefined) updates.settings = settings;
 
     const tenant = await updateTenant(tenantId, updates);
     if (!tenant) {

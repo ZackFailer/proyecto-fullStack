@@ -42,6 +42,7 @@ export interface UpdateTenantInput {
   phone?: string;
   address?: string;
   status?: TenantStatus;
+  settings?: TenantSettings;
 }
 
 export interface UpdateTenantSettingsInput {
@@ -185,6 +186,37 @@ export const updateTenant = async (tenantId: string, updates: UpdateTenantInput)
   if (updates.phone !== undefined) updatePayload.phone = updates.phone.trim();
   if (updates.address !== undefined) updatePayload.address = updates.address.trim();
   if (updates.status !== undefined) updatePayload.status = updates.status;
+
+  if (updates.settings !== undefined) {
+    const tenant = await Tenant.findOne({ _id: tenantId, deletedAt: null }).select({ settings: 1 }).lean();
+    if (!tenant) return null;
+
+    const current = normalizeSettings((tenant as ITenant).settings);
+    const hasCurrencyUpdate = updates.settings.currency !== undefined;
+    const hasBrandingUpdate = updates.settings.branding !== undefined;
+
+    if (hasCurrencyUpdate || hasBrandingUpdate) {
+      const mergedSettings: TenantSettings = {};
+
+      const nextCurrency = hasCurrencyUpdate
+        ? updates.settings.currency?.trim().toUpperCase()
+        : current.currency;
+      if (nextCurrency) {
+        mergedSettings.currency = nextCurrency;
+      } else {
+        mergedSettings.currency = 'USD';
+      }
+
+      const nextBranding = hasBrandingUpdate
+        ? normalizeBranding(updates.settings.branding)
+        : normalizeBranding(current.branding);
+      if (nextBranding) {
+        mergedSettings.branding = nextBranding;
+      }
+
+      updatePayload.settings = mergedSettings;
+    }
+  }
 
   if (Object.keys(updatePayload).length === 0) {
     throw buildError(400, 'VALIDATION_ERROR', 'No se enviaron campos para actualizar');

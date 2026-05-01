@@ -20,6 +20,10 @@ export interface TenantListItemDTO {
 	currency?: string;
 	status: TenantStatus;
 	branding?: TenantBranding;
+	settings?: {
+		currency?: string;
+		branding?: TenantBranding;
+	};
 	createdAt?: string;
 	updatedAt?: string;
 }
@@ -58,10 +62,11 @@ export interface CreateTenantPayload {
 	email?: string;
 	phone?: string;
 	address?: string;
-	timezone?: string;
-	currency?: string;
 	status?: TenantStatus;
-	branding?: TenantBranding;
+	settings?: {
+		currency?: string;
+		branding?: TenantBranding;
+	};
 }
 
 export interface UpdateTenantPayload {
@@ -70,10 +75,11 @@ export interface UpdateTenantPayload {
 	email?: string;
 	phone?: string;
 	address?: string;
-	timezone?: string;
-	currency?: string;
 	status?: TenantStatus;
-	branding?: TenantBranding;
+	settings?: {
+		currency?: string;
+		branding?: TenantBranding;
+	};
 }
 
 export interface TenantFormValue {

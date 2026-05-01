@@ -91,12 +91,44 @@ import { TenantFormValue, TenantListItemDTO, TenantStatus } from '../../interfac
 
         <div class="grid gap-2">
           <label for="tenant-primary-color">Color primario</label>
-          <input id="tenant-primary-color" pInputText [ngModel]="form().brandingPrimaryColor" (ngModelChange)="update('brandingPrimaryColor', $event)" placeholder="#0ea5e9" />
+          <div class="flex gap-2 items-center">
+            <input
+              type="color"
+              id="tenant-primary-color"
+              class="h-10 w-12 cursor-pointer border-0 p-0"
+              [ngModel]="form().brandingPrimaryColor"
+              (ngModelChange)="update('brandingPrimaryColor', $event)"
+            />
+            <input
+              id="tenant-primary-color-text"
+              class="flex-1"
+              pInputText
+              [ngModel]="form().brandingPrimaryColor"
+              (ngModelChange)="update('brandingPrimaryColor', $event)"
+              placeholder="#0ea5e9"
+            />
+          </div>
         </div>
 
         <div class="grid gap-2">
           <label for="tenant-secondary-color">Color secundario</label>
-          <input id="tenant-secondary-color" pInputText [ngModel]="form().brandingSecondaryColor" (ngModelChange)="update('brandingSecondaryColor', $event)" placeholder="#0369a1" />
+          <div class="flex gap-2 items-center">
+            <input
+              type="color"
+              id="tenant-secondary-color"
+              class="h-10 w-12 cursor-pointer border-0 p-0"
+              [ngModel]="form().brandingSecondaryColor"
+              (ngModelChange)="update('brandingSecondaryColor', $event)"
+            />
+            <input
+              id="tenant-secondary-color-text"
+              class="flex-1"
+              pInputText
+              [ngModel]="form().brandingSecondaryColor"
+              (ngModelChange)="update('brandingSecondaryColor', $event)"
+              placeholder="#0369a1"
+            />
+          </div>
         </div>
       </div>
 

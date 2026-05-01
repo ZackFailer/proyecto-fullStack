@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Auth } from '../../../../../@core/services/auth/auth';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -8,10 +8,11 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { DividerModule } from 'primeng/divider';
 import { TagModule } from 'primeng/tag';
+import { MessageModule } from 'primeng/message';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, CardModule, ButtonModule, InputTextModule, PasswordModule, DividerModule, TagModule],
+  imports: [ReactiveFormsModule, RouterLink, CardModule, ButtonModule, InputTextModule, PasswordModule, DividerModule, TagModule, MessageModule],
   template: `
   <main class="min-h-screen bg-surface-50 text-surface-900 flex items-center justify-center px-4 py-10">
     <p-card styleClass="w-full max-w-xl shadow-2 border border-surface-200">
@@ -39,6 +40,10 @@ import { TagModule } from 'primeng/tag';
           <p class="text-sm text-surface-600">Usa las credenciales demo (<strong>ejemplo@gmail.com / 123456</strong>) para explorar el dashboard.</p>
         </div>
 
+        @if (authError()) {
+          <p-message severity="error" [text]="authError()!" styleClass="w-full mb-4"></p-message>
+        }
+
         <form class="space-y-4" [formGroup]="loginForm" (ngSubmit)="onSubmit()">
           <div class="space-y-2">
             <label for="username" class="text-sm font-medium text-surface-800">Email</label>
@@ -49,7 +54,17 @@ import { TagModule } from 'primeng/tag';
               class="w-full"
               placeholder="ejemplo@gmail.com"
               formControlName="username"
+              [class.ng-invalid]="isFieldInvalid('username')"
             />
+            @if (isFieldInvalid('username')) {
+              <small class="p-error block">
+                @if (loginForm.get('username')?.hasError('required')) {
+                  El email es requerido
+                } @else if (loginForm.get('username')?.hasError('email')) {
+                  Ingresa un email válido (ej: nombre@dominio.com)
+                }
+              </small>
+            }
           </div>
 
           <div class="space-y-2">
@@ -62,7 +77,17 @@ import { TagModule } from 'primeng/tag';
               styleClass="w-full"
               inputStyleClass="w-full"
               placeholder="••••••"
+              [class.ng-invalid]="isFieldInvalid('password')"
             ></p-password>
+            @if (isFieldInvalid('password')) {
+              <small class="p-error block">
+                @if (loginForm.get('password')?.hasError('required')) {
+                  La contraseña es requerida
+                } @else if (loginForm.get('password')?.hasError('minlength')) {
+                  Mínimo 6 caracteres
+                }
+              </small>
+            }
           </div>
 
           <p-button
@@ -70,6 +95,8 @@ import { TagModule } from 'primeng/tag';
             label="Ingresar"
             icon="pi pi-sign-in"
             styleClass="w-full p-button-success"
+            [loading]="isLoading()"
+            [disabled]="isLoading()"
           ></p-button>
         </form>
 
@@ -99,17 +126,28 @@ export default class Login {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
 
-  constructor() {  }
+  readonly isLoading = signal(false);
+  readonly authError = signal<string | null>(null);
 
   loginForm = this.fb.nonNullable.group({
     username: ['', [Validators.email, Validators.required]],
-    password: ['', [Validators.required]]
+    password: ['', [Validators.required, Validators.minLength(6)]]
   })
 
+  isFieldInvalid(fieldName: string): boolean {
+    const field = this.loginForm.get(fieldName);
+    return !!(field && field.invalid && (field.dirty || field.touched));
+  }
+
   onSubmit() {
+    this.authError.set(null);
+
     if (this.loginForm.invalid) {
+      this.loginForm.markAllAsTouched();
       return;
     }
+
+    this.isLoading.set(true);
     const raw = this.loginForm.getRawValue();
     const credentials = {
       email: raw.username ?? '',
@@ -118,10 +156,13 @@ export default class Login {
 
     this.auth.authenticate(credentials).subscribe({
       next: () => {
+        this.isLoading.set(false);
         this.router.navigate(['/admin']);
       },
-      error: () => {
-        console.log('error al navegar')
+      error: (err) => {
+        this.isLoading.set(false);
+        const errorMessage = err?.error?.message || err?.message || 'Credenciales incorrectas. Por favor verifica tu email y contraseña.';
+        this.authError.set(errorMessage);
       }
     });
   }

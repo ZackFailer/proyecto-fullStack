@@ -82,19 +82,87 @@ describe('tenant and store endpoints', () => {
     expect(tenantService.createTenant).not.toHaveBeenCalled();
   });
 
-  it('rejects settings payload on tenant identity update endpoint', async () => {
+  it('allows updating tenant with settings in single request', async () => {
+    vi.mocked(tenantService.updateTenant).mockResolvedValue({
+      id: tenantId,
+      slug: 'acme',
+      name: 'Acme Corp',
+      documentType: 'NIT',
+      documentNumber: '123',
+      status: 'active',
+      settings: { currency: 'USD', branding: { logoUrl: 'https://cdn/logo.png' } },
+    } as any);
+
     const token = signToken({ id: 'u-super', role: 'super-admin' });
 
     const response = await request(app)
       .patch(`/api/tenants/${tenantId}`)
       .set(authHeader(token))
       .send({
-        settings: { currency: 'USD' },
+        name: 'Acme Corp',
+        settings: { currency: 'USD', branding: { logoUrl: 'https://cdn/logo.png' } },
       });
 
-    expect(response.status).toBe(400);
-    expect(response.body.code).toBe('UNSUPPORTED_FIELD');
-    expect(tenantService.updateTenant).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(tenantService.updateTenant).toHaveBeenCalledWith(tenantId, {
+      name: 'Acme Corp',
+      settings: { currency: 'USD', branding: { logoUrl: 'https://cdn/logo.png' } },
+    });
+  });
+
+  it('allows partial settings update with only currency', async () => {
+    vi.mocked(tenantService.updateTenant).mockResolvedValue({
+      id: tenantId,
+      slug: 'acme',
+      name: 'Acme',
+      documentType: 'NIT',
+      documentNumber: '123',
+      status: 'active',
+      settings: { currency: 'EUR', branding: { logoUrl: 'https://cdn/logo.png' } },
+    } as any);
+
+    const token = signToken({ id: 'u-super', role: 'super-admin' });
+
+    const response = await request(app)
+      .patch(`/api/tenants/${tenantId}`)
+      .set(authHeader(token))
+      .send({
+        settings: { currency: 'EUR' },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(tenantService.updateTenant).toHaveBeenCalledWith(tenantId, {
+      settings: { currency: 'EUR' },
+    });
+  });
+
+  it('allows partial settings update with only branding', async () => {
+    vi.mocked(tenantService.updateTenant).mockResolvedValue({
+      id: tenantId,
+      slug: 'acme',
+      name: 'Acme',
+      documentType: 'NIT',
+      documentNumber: '123',
+      status: 'active',
+      settings: { currency: 'USD', branding: { primaryColor: '#FF0000' } },
+    } as any);
+
+    const token = signToken({ id: 'u-super', role: 'super-admin' });
+
+    const response = await request(app)
+      .patch(`/api/tenants/${tenantId}`)
+      .set(authHeader(token))
+      .send({
+        settings: { branding: { primaryColor: '#FF0000' } },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(tenantService.updateTenant).toHaveBeenCalledWith(tenantId, {
+      settings: { branding: { primaryColor: '#FF0000' } },
+    });
   });
 
   it('blocks viewer from listing stores in own tenant', async () => {
