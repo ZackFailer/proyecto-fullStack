@@ -1,0 +1,71 @@
+schema: spec-driven
+
+context: |
+  ## Tech Stack
+  - **Backend**: Express 5 + TypeScript + MongoDB (Mongoose) + JWT
+  - **Frontend**: Angular 21.2.0 (Signals & Standalone components)
+  - **UI**: PrimeNG 21.1.3 + Tailwind 4 + @primeuix/themes
+  - **Monorepo**: npm workspaces (`backend/` y `frontend/`)
+  - **Testing**: vitest con supertest (backend)
+
+  ## Sub-Agents Disponibles
+  - **Backend API Agent** (default for backend code): Scope `backend/src/**`
+    - Routers, controllers, services, models, middleware, config
+    - Model: GPT-5.1-Codex-Max
+    - Conventions: strict TS, ES modules with `.js` extensions, JSON envelope responses
+  - **Frontend UI Agent** (default for frontend code): Scope `frontend/src/app/**`
+    - Pages, components, services, routing, styles
+    - Model: GPT-5.1-Codex-Max
+    - Conventions: standalone components, signals, OnPush, PrimeNG + Tailwind
+  - **Docs & Config Agent**: Scope docs, README, configuration files
+
+  ## Arquitectura Backend
+  - Capas: routers → controllers → services → models → config/
+  - ES modules con extensión `.js` en imports
+  - JSON envelope responses: `{ success: true, message, data }`
+  - Errores propagan a `error.middleware.ts`
+  - Validar ObjectIds antes de queries MongoDB
+  - Usar `lean()` para queries de solo lectura
+
+  ## Arquitectura Frontend
+  - Componentes standalone (no usar `standalone: true`)
+  - Signals para estado local, `computed()` para valores derivados
+  - OnPush change detection obligatorio
+  - Nombres kebab-case, páginas en `pages/<page>/<page>.ts`
+  - Separar servicios: api (HTTP), data (fetch/transform), adapter (map)
+  - Lazy-load para rutas de features
+  - PrimeNG + Tailwind (evitar CSS inline)
+
+  ## Roles (Aplicar en backend y frontend)
+  - `viewer`: solo lectura
+  - `operator`: lectura + creación en features específicas
+  - `admin`: lectura, creación y edición
+  - `superadmin`: nivel global (solo backend, acceso total)
+
+  ## Features Actuales
+  - Gestión de Usuarios (CRUD, password privilegiado, login attempts)
+  - Multi-tenant con tenant context middleware
+  - Autenticación JWT con refresh tokens
+  - Login attempt logging
+
+  ## Features Futuras (Roadmap)
+  - **Inventory & Products**: Catálogo completo con stock en tiempo real
+  - **Bulk Import**: Importación optimizada de productos mediante archivos
+  - **Customers & Suppliers**: Gestión de relaciones comerciales
+  - **Audit & Reconciliation**: Registro de movimientos y balance de cuentas
+  - **History**: Trazabilidad completa de las acciones realizadas en el sistema
+
+rules:
+  - proposal: Incluir siempre seccion "Non-goals"
+  - proposal: Especificar impacto en backend y frontend por separado
+  - proposal: Incluir consideraciones de seguridad y roles
+  - proposal: Documentar estado COMPLETED, IN_PROGRESS o PENDING
+  - design: Para backend detallar rutas, controllers, servicios, modelos, validaciones e indices
+  - design: Para frontend detallar componentes, servicios, rutas, estado con signals y guards
+  - design: Incluir errores HTTP esperados y manejo de roles
+  - design: Separar el diseno por subagente Backend API y Frontend UI
+  - tasks: Separar tareas por subagente Backend API y Frontend UI
+  - tasks: Preferir tareas de maximo 2 horas
+  - tasks: Incluir tests para cada feature nueva
+  - tasks: Ejecutar backend antes que frontend cuando haya dependencia
+  - tasks: Marcar tareas completadas y pendientes
