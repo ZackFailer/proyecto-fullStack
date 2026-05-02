@@ -4,6 +4,24 @@ import { AuthRequest, AuthUser } from '../models/auth.model.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_no_usar_en_produccion';
 
+export const requireRole = (...allowedRoles: string[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+    const userRole = req.user?.role
+
+    if (!userRole) {
+      res.status(401).json({ success: false, message: 'No autenticado' })
+      return
+    }
+
+    if (!allowedRoles.includes(userRole)) {
+      res.status(403).json({ success: false, message: 'No tienes permisos para realizar esta acción' })
+      return
+    }
+
+    next()
+  }
+}
+
 export const autenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     const cookieToken = (req as unknown as { cookies?: { token?: string } })?.cookies?.token as string | undefined;
