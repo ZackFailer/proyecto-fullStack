@@ -28,6 +28,11 @@ const tenantLayoutRoutes: Routes = [
         loadComponent: () => import('../tenant/products/pages/product-settings')
       },
       {
+        path: 'products/import',
+        loadComponent: () => import('../tenant/products/pages/bulk-import'),
+        canActivate: [tenantAdminGuard]
+      },
+      {
         path: 'users',
         loadComponent: () => import('../super-admin/users/pages/users/users'),
         canActivate: [tenantAdminGuard]

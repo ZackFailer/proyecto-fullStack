@@ -14,7 +14,6 @@ export class LayoutAdminData {
   private readonly tenantInfo = this.tenantContext.tenantInfo;
 
   readonly itemSidebar = computed<MenuItem[]>(() => {
-
     if (this.tenantId() && this.auth.isSuperAdmin()) {
       return this.superAdminTenantViewSidebar();
     }
@@ -49,53 +48,52 @@ export class LayoutAdminData {
     };
   });
 
-  private readonly superAdminTenantViewSidebar = computed<MenuItem[]>(() => {
-    return [
-      {
-        label: 'Dashboard',
-        icon: 'pi pi-fw pi-home',
-        routerLink: `/admin/${this.tenantId()}/dashboard`
-      },
-      {
-        label: 'Productos',
-        icon: 'pi pi-fw pi-box',
-        items: [
-          { label: 'Listado', icon: 'pi pi-list', routerLink: `/admin/${this.tenantId()}/products` },
-          { label: 'Product Settings', icon: 'pi pi-cog', routerLink: `/admin/${this.tenantId()}/product-settings` },
-        ]
-      },
-      {
-        label: 'Usuarios',
-        icon: 'pi pi-fw pi-users',
-        routerLink: `/admin/${this.tenantId()}/users`
-      },
-      {
-        label: 'Inventario',
-        icon: 'pi pi-fw pi-briefcase',
-        routerLink: `/admin/${this.tenantId()}/inventory`
-      },
-      {
-        label: 'Clientes',
-        icon: 'pi pi-fw pi-id-card',
-        routerLink: `/admin/${this.tenantId()}/customers`
-      },
-      {
-        label: 'Proveedores',
-        icon: 'pi pi-fw pi-id-card',
-        routerLink: `/admin/${this.tenantId()}/providers`
-      },
-      {
-        label: 'Auditoría y Conciliaciones',
-        icon: 'pi pi-fw pi-shield',
-        routerLink: `/admin/${this.tenantId()}/audit`
-      },
-      {
-        label: 'Historial',
-        icon: 'pi pi-fw pi-clock',
-        routerLink: `/admin/${this.tenantId()}/history`
-      }
-    ];
-  });
+  private readonly superAdminTenantViewSidebar = computed<MenuItem[]>(() => [
+    {
+      label: 'Dashboard',
+      icon: 'pi pi-fw pi-home',
+      routerLink: `/admin/${this.tenantId()}/dashboard`
+    },
+    {
+      label: 'Productos',
+      icon: 'pi pi-fw pi-box',
+      items: [
+        { label: 'Listado', icon: 'pi pi-list', routerLink: `/admin/${this.tenantId()}/products` },
+        { label: 'Importar', icon: 'pi pi-upload', routerLink: `/admin/${this.tenantId()}/products/import` },
+        { label: 'Product Settings', icon: 'pi pi-cog', routerLink: `/admin/${this.tenantId()}/product-settings` },
+      ]
+    },
+    {
+      label: 'Usuarios',
+      icon: 'pi pi-fw pi-users',
+      routerLink: `/admin/${this.tenantId()}/users`
+    },
+    {
+      label: 'Inventario',
+      icon: 'pi pi-fw pi-briefcase',
+      routerLink: `/admin/${this.tenantId()}/inventory`
+    },
+    {
+      label: 'Clientes',
+      icon: 'pi pi-fw pi-id-card',
+      routerLink: `/admin/${this.tenantId()}/customers`
+    },
+    {
+      label: 'Proveedores',
+      icon: 'pi pi-fw pi-id-card',
+      routerLink: `/admin/${this.tenantId()}/providers`
+    },
+    {
+      label: 'Auditoría y Conciliaciones',
+      icon: 'pi pi-fw pi-shield',
+      routerLink: `/admin/${this.tenantId()}/audit`
+    },
+    {
+      label: 'Historial',
+      icon: 'pi pi-fw pi-clock',
+      routerLink: `/admin/${this.tenantId()}/history`
+    }
+  ]);
 
   private readonly superAdminSidebar = signal<MenuItem[]>([
     {
@@ -128,48 +126,50 @@ export class LayoutAdminData {
       icon: 'pi pi-fw pi-shield',
       routerLink: '/admin/login-attempts'
     }
-  ])
+  ]);
 
-private readonly tenantSidebar = computed<MenuItem[]>(() => {
+  private readonly tenantSidebar = computed<MenuItem[]>(() => {
     const tenantId = this.tenantId();
     const role = this.auth.currentUser()?.role;
     const canAccessPrivileged = role === 'admin' || role === 'operator';
     const canAccessUsers = role === 'admin';
+    const canImportProducts = role === 'admin';
 
     if (!tenantId) {
       return [];
     }
 
     const items: MenuItem[] = [
-    {
-      label: 'Dashboard',
-      icon: 'pi pi-fw pi-home',
-      routerLink: `/app/${tenantId}/dashboard`
-    },
-    {
-      label: 'Productos',
-      icon: 'pi pi-fw pi-box',
-      items: [
-        { label: 'Listado', icon: 'pi pi-list', routerLink: `/app/${tenantId}/products` },
-        { label: 'Product Settings', icon: 'pi pi-cog', routerLink: `/app/${tenantId}/product-settings` },
-      ]
-    },
-    {
-      label: 'Inventario',
-      icon: 'pi pi-fw pi-briefcase',
-      routerLink: `/app/${tenantId}/inventory`
-    },
-    {
-      label: 'Clientes',
-      icon: 'pi pi-fw pi-id-card',
-      routerLink: `/app/${tenantId}/customers`
-    },
-    {
-      label: 'Proveedores',
-      icon: 'pi pi-fw pi-id-card',
-      routerLink: `/app/${tenantId}/providers`
-    }
-  ];
+      {
+        label: 'Dashboard',
+        icon: 'pi pi-fw pi-home',
+        routerLink: `/app/${tenantId}/dashboard`
+      },
+      {
+        label: 'Productos',
+        icon: 'pi pi-fw pi-box',
+        items: [
+          { label: 'Listado', icon: 'pi pi-list', routerLink: `/app/${tenantId}/products` },
+          ...(canImportProducts ? [{ label: 'Importar', icon: 'pi pi-upload', routerLink: `/app/${tenantId}/products/import` }] : []),
+          { label: 'Product Settings', icon: 'pi pi-cog', routerLink: `/app/${tenantId}/product-settings` },
+        ]
+      },
+      {
+        label: 'Inventario',
+        icon: 'pi pi-fw pi-briefcase',
+        routerLink: `/app/${tenantId}/inventory`
+      },
+      {
+        label: 'Clientes',
+        icon: 'pi pi-fw pi-id-card',
+        routerLink: `/app/${tenantId}/customers`
+      },
+      {
+        label: 'Proveedores',
+        icon: 'pi pi-fw pi-id-card',
+        routerLink: `/app/${tenantId}/providers`
+      }
+    ];
 
     if (canAccessUsers) {
       items.splice(2, 0, {
@@ -196,5 +196,4 @@ private readonly tenantSidebar = computed<MenuItem[]>(() => {
 
     return items;
   });
-
 }
