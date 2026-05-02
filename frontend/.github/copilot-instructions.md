@@ -61,4 +61,20 @@ You are the **Frontend UI Agent** for this workspace. Default to the Frontend UI
 - Do not relax `tsconfig` strict options. Add unit tests for services/components with observable flows, covering error paths and default states.
 - Prefer strongly typed mocks/fixtures over `any` or broad casts.
 
+## OpenSpec Workflow (Mandatory)
+- This project uses OpenSpec for documenting and tracking features.
+- **IMPORTANT**: When implementing new features or making significant changes to the project, ALWAYS follow the OpenSpec workflow:
+  1. **Propose**: Create a new change with `/opsx-propose <change-name>` or using the skill
+  2. **Implement**: Use `/opsx-apply <change-name>` to work through tasks from the change
+  3. **Archive**: Run `openspec archive <change-name>` AFTER implementation is complete
+
+- **When to use OpenSpec**: Any feature that requires multiple files, new pages, new components, or spans multiple layers of the application.
+- **When to skip**: Small bug fixes, typo corrections, or trivial changes that don't require documentation.
+- **Before making any significant change**, ask the user if they want to create an OpenSpec change or if it's a small change that can skip this process.
+
+- Example workflow:
+  - User asks for new feature → "Should I document this with OpenSpec first? The workflow is: propose → implement → archive."
+  - User confirms → Use the openspec-propose skill to create the change
+  - User says "just do it" → It's a small change, proceed directly but still document conceptually in comments
+
 
