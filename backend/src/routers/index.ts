@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import productRoutes from './product.routes.js';
+import productTypeRoutes from './product-type.routes.js';
+import bulkImportRoutes from './bulk-import.routes.js';
 import homeRouter from "./home.routes.js";
 import aboutRouter from "./about.routes.js";
 import authRouter from "./auth.routes.js";
@@ -22,6 +24,8 @@ router.use(resolveTenantContext);
 router.use('/tenants', tenantRouter);
 router.use('/users', userRouter);
 router.use('/products', productRoutes);
+router.use('/product-types', productTypeRoutes);
+router.use('/bulk-import', bulkImportRoutes);
 router.use('/password-change-requests', passwordChangeRequestRouter);
 router.use('/login-attempts', loginAttemptRouter);
 
