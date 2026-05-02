@@ -12,10 +12,12 @@ import { IProductSettingsMetrics } from '../../../interfaces/product-settings';
         <p class="text-lg font-semibold text-surface-900">Tipos de producto y atributos por tenant</p>
         <p class="text-sm text-surface-600">Define, versiona y valida atributos dinámicos para productos. Cambios breaking generan nuevas versiones.</p>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <p-button label="Nuevo tipo" icon="pi pi-plus" styleClass="p-button-success p-button-sm" (onClick)="createRequested.emit()" />
-        <p-button label="Publicar cambios" icon="pi pi-send" styleClass="p-button-outlined p-button-sm" severity="secondary" />
-      </div>
+      @if (isAdmin()) {
+        <div class="flex flex-wrap gap-2">
+          <p-button label="Nuevo tipo" icon="pi pi-plus" styleClass="p-button-success p-button-sm" (onClick)="createRequested.emit()" />
+          <p-button label="Publicar cambios" icon="pi pi-send" styleClass="p-button-outlined p-button-sm" severity="secondary" />
+        </div>
+      }
     </div>
 
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mt-3">
@@ -35,9 +37,6 @@ import { IProductSettingsMetrics } from '../../../interfaces/product-settings';
         <span class="stat-label">Deprecados</span>
         <div class="flex items-center gap-2">
           <span class="stat-value text-amber-600">{{ metrics().deprecatedAttributes }}</span>
-          <!-- @if (metrics().deprecatedAttributes) {
-            <p-tag severity="warn" value="Migrar" />
-          } -->
         </div>
       </div>
     </div>
@@ -69,5 +68,11 @@ import { IProductSettingsMetrics } from '../../../interfaces/product-settings';
 })
 export class ProductSettingsToolbar {
   readonly metrics = input.required<IProductSettingsMetrics>();
+  readonly userRole = input<'admin' | 'super-admin' | 'operator' | 'viewer'>('viewer');
   readonly createRequested = output<void>();
+
+  protected isAdmin(): boolean {
+    const role = this.userRole();
+    return role === 'admin' || role === 'super-admin';
+  }
 }

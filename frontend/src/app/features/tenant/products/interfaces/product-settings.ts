@@ -5,7 +5,7 @@ export interface IProductAttribute {
   label: string;
   type: ProductAttributeType;
   required: boolean;
-  options?: ReadonlyArray<string>;
+  options?: string[];
   defaultValue?: string | number | boolean | null;
   order: number;
   version: number;
@@ -18,8 +18,8 @@ export interface IProductType {
   name: string;
   version: number;
   isActive: boolean;
-  attributes: ReadonlyArray<IProductAttribute>;
-  lastPublishedAt: string;
+  attributes: Array<IProductAttribute>;
+  lastPublishedAt?: string;
   status: 'draft' | 'published';
 }
 
