@@ -53,3 +53,7 @@ backend/.env
 
 # Build artifacts
 *.map
+
+# Package locks (personal project)
+package-lock.json
+yarn.lock
