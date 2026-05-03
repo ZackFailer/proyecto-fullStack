@@ -63,6 +63,11 @@ export class BulkImportData {
             processedItems: 0,
             successItems: 0,
             errorItems: 0,
+            created: 0,
+            updated: 0,
+            reactivated: 0,
+            deactivated: 0,
+            deleted: 0,
             startedAt: new Date().toISOString(),
             fileName: file.name,
             fileSize: file.size,
@@ -163,11 +168,12 @@ export class BulkImportData {
     const errors = this._errors();
     if (errors.length === 0) return;
 
-    const headers = ['rowNumber', 'status', ...errors[0].errors.map(e => e.field), 'errorMessages'];
+    const originalHeaders = Object.keys(errors[0].originalData || {});
+    const headers = ['rowNumber', ...originalHeaders, 'accion_intentada', 'error'];
     const rows = errors.map(e => {
-      const errorFields = e.errors.map(err => err.field);
+      const originalValues = originalHeaders.map((header) => String(e.originalData?.[header] ?? ''));
       const errorMessages = e.errors.map(err => err.message).join('; ');
-      return [e.rowNumber, e.status, ...errorFields, errorMessages].join(',');
+      return [e.rowNumber, ...originalValues, e.action ?? 'error', errorMessages].join(',');
     });
 
     const csv = [headers.join(','), ...rows].join('\n');

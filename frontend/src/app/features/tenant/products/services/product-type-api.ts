@@ -20,6 +20,7 @@ export interface IProductAttribute {
 export interface IProductType {
   id: string;
   name: string;
+  conversionAttribute?: string;
   version: number;
   isActive: boolean;
   status: 'draft' | 'published';
@@ -30,6 +31,7 @@ export interface IProductType {
 export interface CreateProductTypePayload {
   name: string;
   isActive: boolean;
+  conversionAttribute?: string;
   attributes: Array<{
     key: string;
     label: string;
@@ -70,5 +72,23 @@ export class ProductTypeApi {
 
   deleteProductType(id: string): Observable<IApiResponse<null>> {
     return this.http.delete<IApiResponse<null>>(`${this.apiUrl}/${id}`);
+  }
+
+  downloadTemplate(typeId: string, format: 'xlsx' | 'csv' = 'xlsx'): void {
+    this.http.get(`${this.apiUrl}/${typeId}/template?format=${format}`, {
+      responseType: 'blob',
+    }).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${typeId}-template.${format}`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        console.error('Error downloading template:', err);
+      }
+    });
   }
 }

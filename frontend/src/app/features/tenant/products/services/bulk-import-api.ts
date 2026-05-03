@@ -14,6 +14,11 @@ export interface IBulkProcess {
   processedItems: number;
   successItems: number;
   errorItems: number;
+  created: number;
+  updated: number;
+  reactivated: number;
+  deactivated: number;
+  deleted: number;
   startedAt: string;
   completedAt?: string;
   errorSummary?: string;
@@ -42,6 +47,7 @@ export interface IItemProcessLog {
   processId: string;
   rowNumber: number;
   status: 'success' | 'error' | 'skipped';
+  action?: 'created' | 'updated' | 'reactivated' | 'deactivated' | 'deleted' | 'error';
   originalData: Record<string, string>;
   errors: IItemProcessError[];
   processedAt: string;

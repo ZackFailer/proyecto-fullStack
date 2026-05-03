@@ -4,6 +4,7 @@ import { DividerModule } from 'primeng/divider';
 import { ButtonModule } from 'primeng/button';
 import { CreateProductTypeModal, ProductSettingsToolbar, ProductTypeList, ProductAttributes, ProductGuardrails } from '../components/product-settings';
 import { ProductSettingsData } from '../services/product-settings-data';
+import { ProductTypeApi } from '../services/product-type-api';
 import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
 import { Auth } from '../../../../@core/services/auth/auth';
 
@@ -23,7 +24,7 @@ import { Auth } from '../../../../@core/services/auth/auth';
           <div class="space-y-3">
             <div class="flex items-center justify-between gap-2">
               <p class="text-sm font-semibold text-surface-900">Atributos</p>
-              <p-button label="Descargar CSV" icon="pi pi-download" styleClass="p-button-text p-button-sm" (onClick)="downloadTemplate()" />
+              <p-button label="Descargar Excel" icon="pi pi-download" styleClass="p-button-text p-button-sm" (onClick)="downloadTemplate()" />
             </div>
             <app-product-attributes [productType]="selectedType()" />
           </div>
@@ -46,6 +47,7 @@ import { Auth } from '../../../../@core/services/auth/auth';
 })
 export default class ProductSettingsPage {
   private readonly data = inject(ProductSettingsData);
+  private readonly api = inject(ProductTypeApi);
   private readonly auth = inject(Auth);
 
   protected readonly types = this.data.productTypes;
@@ -88,29 +90,6 @@ export default class ProductSettingsPage {
       return;
     }
 
-    const baseColumns = ['productTypeId', 'productTypeVersion', 'sku', 'name', 'category', 'price', 'stock'];
-    const dynamicColumns = (type.attributes as any[]).map(attr => attr.key);
-    const headers = [...baseColumns, ...dynamicColumns];
-
-    const sampleRow = [
-      type.id,
-      type.version,
-      'SKU-001',
-      'Producto de ejemplo',
-      'Categoría',
-      '0',
-      '0',
-      ...dynamicColumns.map(() => ''),
-    ];
-
-    const csv = [headers.join(','), sampleRow.join(',')].join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${type.id}-template.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    this.api.downloadTemplate(type.id, 'xlsx');
   }
 }

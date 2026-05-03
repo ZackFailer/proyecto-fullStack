@@ -76,6 +76,29 @@ import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
               </div>
             </div>
 
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-xs">
+              <div class="p-2 bg-emerald-50 rounded">
+                <p class="font-semibold text-emerald-700">{{ currentProcess()!.created ?? 0 }}</p>
+                <p class="text-emerald-700">Creados</p>
+              </div>
+              <div class="p-2 bg-blue-50 rounded">
+                <p class="font-semibold text-blue-700">{{ currentProcess()!.updated ?? 0 }}</p>
+                <p class="text-blue-700">Actualizados</p>
+              </div>
+              <div class="p-2 bg-amber-50 rounded">
+                <p class="font-semibold text-amber-700">{{ currentProcess()!.reactivated ?? 0 }}</p>
+                <p class="text-amber-700">Reactivados</p>
+              </div>
+              <div class="p-2 bg-orange-50 rounded">
+                <p class="font-semibold text-orange-700">{{ currentProcess()!.deactivated ?? 0 }}</p>
+                <p class="text-orange-700">Desactivados</p>
+              </div>
+              <div class="p-2 bg-zinc-100 rounded">
+                <p class="font-semibold text-zinc-700">{{ currentProcess()!.deleted ?? 0 }}</p>
+                <p class="text-zinc-700">Deleted</p>
+              </div>
+            </div>
+
             @if (currentProcess()!.status !== 'pending' && currentProcess()!.status !== 'processing') {
               <div class="flex gap-2">
                 @if (errors().length > 0) {
@@ -99,6 +122,7 @@ import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
                 <th>Total</th>
                 <th>Exitosos</th>
                 <th>Errores</th>
+                <th>C/U/R</th>
                 <th>Acciones</th>
               </tr>
             </ng-template>
@@ -112,6 +136,7 @@ import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
                 <td>{{ process.totalItems }}</td>
                 <td class="text-green-600">{{ process.successItems }}</td>
                 <td class="text-red-600">{{ process.errorItems }}</td>
+                <td>{{ process.created ?? 0 }}/{{ process.updated ?? 0 }}/{{ process.reactivated ?? 0 }}</td>
                 <td>
                   @if (process.errorItems > 0) {
                     <p-button icon="pi pi-eye" styleClass="p-button-text p-button-sm" (onClick)="viewErrors(process.id)" />
@@ -138,6 +163,7 @@ import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
             <ng-template pTemplate="header">
               <tr>
                 <th>Fila</th>
+                <th>Acción</th>
                 <th>Errores</th>
                 <th>Datos Originales</th>
               </tr>
@@ -145,6 +171,7 @@ import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
             <ng-template pTemplate="body" let-error>
               <tr>
                 <td>{{ error.rowNumber }}</td>
+                <td>{{ error.action || 'error' }}</td>
                 <td>
                   @for (err of error.errors; track err.field) {
                     <p class="text-red-600 text-sm">{{ err.field }}: {{ err.message }}</p>

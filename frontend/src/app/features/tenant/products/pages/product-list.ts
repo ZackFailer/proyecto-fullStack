@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Router, ActivatedRoute } from '@angular/router';
 import { Card } from 'primeng/card';
 import { TableFilter } from '../../../../shared/filter/table-filter/table-filter';
-import { SingleTable } from '../../../../shared/table/single-table';
+import { SingleTable, ITableConfig } from '../../../../shared/table/single-table';
 import { ProductData } from '../services/product-list/product-data';
+import { IProduct } from '../../../../@core/interfaces/i-product';
 
 @Component({
   selector: 'app-product-list',
@@ -18,7 +20,18 @@ import { ProductData } from '../services/product-list/product-data';
         />
 
       <p-card header="Listado de productos">
-        <app-single-table [tableConfig]="filteredTableConfig()" />
+        @if (loading()) {
+          <div class="flex justify-center p-4">
+            <i class="pi pi-spin pi-spinner text-2xl"></i>
+          </div>
+        } @else if (error()) {
+          <div class="text-red-600 p-4">{{ error() }}</div>
+        } @else {
+          <app-single-table
+            [tableConfig]="tableConfig()"
+            (onRowSelect)="viewProduct($event)"
+          />
+        }
       </p-card>
     </div>
   `,
@@ -31,36 +44,41 @@ import { ProductData } from '../services/product-list/product-data';
 })
 export default class ProductList {
   private readonly productData = inject(ProductData);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  constructor() {
+    this.productData.loadProducts();
+  }
+
+  protected readonly loading = this.productData.loading;
+  protected readonly error = this.productData.error;
   protected readonly searchTerm = signal('');
   protected readonly selectValues = signal<Record<string, string | null>>({});
 
   protected readonly filterConfig = this.productData.filterConfig;
-  protected readonly filteredTableConfig = computed(() => {
-    const config = this.productData.tableConfig();
-    const term = this.searchTerm().trim().toLowerCase();
-    const selectFilters = this.selectValues();
-    const filteredItems = term
-      ? config.item.filter(p =>
-          p.name.toLowerCase().includes(term) || p.category.toLowerCase().includes(term)
-        )
-      : config.item;
 
-    const withSelectFilters = filteredItems.filter(product => {
-      return Object.entries(selectFilters).every(([key, value]) => {
-        if (!value) return true;
-        const fieldValue = product[key as keyof typeof product];
-        return typeof fieldValue === 'string' && fieldValue.toLowerCase() === value.toLowerCase();
-      });
-    });
-
-    return { ...config, item: withSelectFilters };
-  });
+  protected readonly tableConfig = computed<ITableConfig<IProduct>>(() => ({
+    item: this.productData.products(),
+    columns: this.productData.columns(),
+    paginator: true,
+    rows: 10,
+    showActions: true,
+  }));
 
   handleSearch(value: string) {
     this.searchTerm.set(value);
+    this.productData.setSearchTerm(value);
   }
 
   handleSelectChange(change: { key: string; value: string | null }) {
     this.selectValues.update(prev => ({ ...prev, [change.key]: change.value }));
+    this.productData.setSelectFilter(change.key, change.value);
+  }
+
+  viewProduct(product: IProduct): void {
+    if (product?.sku) {
+      this.router.navigate([product.sku], { relativeTo: this.route });
+    }
   }
 }

@@ -16,6 +16,7 @@ export interface IProductAttribute {
 export interface IProductType {
   id: string;
   name: string;
+  conversionAttribute?: string;
   version: number;
   isActive: boolean;
   attributes: Array<IProductAttribute>;
@@ -29,6 +30,7 @@ export interface INewProductType {
 }
 
 export interface INewProductTypeWithAttributes extends INewProductType {
+  conversionAttribute?: string;
   attributes: Array<{
     key: string;
     label: string;

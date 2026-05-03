@@ -1,5 +1,5 @@
 import { computed, Injectable, inject, signal, effect } from '@angular/core';
-import { INewProductType, INewProductTypeWithAttributes, IProductAttribute, IProductSettingsMetrics, IProductType } from '../interfaces/product-settings';
+import { INewProductTypeWithAttributes, IProductAttribute, IProductSettingsMetrics, IProductType } from '../interfaces/product-settings';
 import { ProductTypeApi, CreateProductTypePayload } from './product-type-api';
 
 @Injectable({
@@ -64,6 +64,7 @@ export class ProductSettingsData {
     const apiPayload: CreateProductTypePayload = {
       name: payload.name,
       isActive: payload.isActive,
+      conversionAttribute: payload.conversionAttribute,
       attributes: payload.attributes.map(attr => ({
         key: attr.key,
         label: attr.label,

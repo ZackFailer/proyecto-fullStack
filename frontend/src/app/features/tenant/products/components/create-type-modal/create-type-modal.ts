@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { DialogModule } from 'primeng/dialog';
-import { ReactiveFormsModule, FormBuilder, Validators, FormArray } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, Validators, FormArray, FormControl, FormGroup } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ButtonModule } from 'primeng/button';
@@ -95,6 +95,21 @@ import { INewProductTypeWithAttributes, ProductAttributeType } from '../../inter
               </div>
             }
           </div>
+
+          <div class="grid gap-1">
+            <label class="text-xs font-medium text-surface-900" for="conversionAttribute">Atributo de conversión (opcional)</label>
+            <p-select
+              inputId="conversionAttribute"
+              [options]="numberAttributeOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Selecciona un atributo numérico"
+              formControlName="conversionAttribute"
+              styleClass="w-full"
+              [showClear]="true"
+            ></p-select>
+            <p class="text-xs text-surface-500">Se usa para conversiones automáticas entre SKUs relacionados.</p>
+          </div>
         </div>
 
         <div class="flex justify-end gap-2 pt-2">
@@ -129,8 +144,35 @@ export class CreateProductTypeModal {
   protected readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(3)]],
     isActive: true,
+    conversionAttribute: this.fb.control<string | null>(null),
     attributes: this.fb.nonNullable.array([this.buildAttribute()]),
   });
+
+  protected readonly numberAttributeOptions = () =>
+    this.attributes.controls
+      .map((control) => {
+        const group = control as FormGroup<{
+          key: FormControl<string>
+          label: FormControl<string>
+          type: FormControl<ProductAttributeType>
+          required: FormControl<boolean>
+          options: FormControl<string>
+        }>
+
+        const type = group.controls.type.value
+        const key = group.controls.key.value.trim()
+        const label = group.controls.label.value.trim()
+
+        if (type !== 'number' || !key) {
+          return null
+        }
+
+        return {
+          label: label || key,
+          value: key,
+        }
+      })
+      .filter((item): item is { label: string; value: string } => item !== null)
 
   get attributes(): FormArray {
     return this.form.controls.attributes;
@@ -158,7 +200,7 @@ export class CreateProductTypeModal {
 
   handleClose() {
     this.closed.emit();
-    this.form.reset({ name: '', isActive: true });
+    this.form.reset({ name: '', isActive: true, conversionAttribute: null });
     this.form.setControl('attributes', this.fb.nonNullable.array([this.buildAttribute()]));
   }
 
@@ -179,6 +221,7 @@ export class CreateProductTypeModal {
     this.submitted.emit({
       name: raw.name.trim(),
       isActive: raw.isActive,
+      conversionAttribute: raw.conversionAttribute ?? undefined,
       attributes,
     });
     this.handleClose();
