@@ -8,6 +8,7 @@ router.use(autenticate)
 
 router.get('', productTypeController.listProductTypes)
 router.get('/:id', productTypeController.getProductTypeById)
+router.get('/:id/template', productTypeController.downloadTemplate)
 
 router.post('', requireRole('admin'), productTypeController.createProductType)
 

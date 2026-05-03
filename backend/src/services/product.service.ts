@@ -2,6 +2,13 @@ import { isValidObjectId, Types } from 'mongoose'
 import { Product, IProduct } from '../models/product.model.js'
 import { ProductType } from '../models/product-type.model.js'
 
+type ProductRelationType = 'derived-from' | 'component-of' | 'variant-of' | 'related'
+
+interface RelatedProductInput {
+  sku: string
+  type?: ProductRelationType
+}
+
 export interface ServiceError extends Error {
   status?: number
   code?: string
@@ -20,6 +27,7 @@ export interface CreateProductInput {
   stock: number
   category: string
   customAttributes?: Record<string, unknown>
+  relatedProducts?: RelatedProductInput[]
   status?: 'active' | 'inactive'
 }
 
@@ -31,6 +39,7 @@ export interface UpdateProductInput {
   category?: string
   status?: 'active' | 'inactive'
   customAttributes?: Record<string, unknown>
+  relatedProducts?: RelatedProductInput[]
 }
 
 export interface ListProductsFilters {
@@ -51,6 +60,53 @@ const buildError = (status: number, code: string, message: string, details?: unk
     err.details = details
   }
   return err
+}
+
+const normalizeRelatedProducts = (relatedProducts?: RelatedProductInput[]) => {
+  if (!relatedProducts) {
+    return undefined
+  }
+
+  return relatedProducts.map((item) => ({
+    sku: item.sku,
+    type: item.type ?? 'related',
+  }))
+}
+
+const validateRelatedProducts = async (
+  tenantId: string,
+  relatedProducts?: RelatedProductInput[],
+  currentSku?: string
+): Promise<void> => {
+  if (!relatedProducts || relatedProducts.length === 0) {
+    return
+  }
+
+  const tenantObjectId = new Types.ObjectId(tenantId)
+  const skus = Array.from(new Set(relatedProducts.map((item) => item.sku?.trim()).filter(Boolean) as string[]))
+
+  if (skus.length !== relatedProducts.length) {
+    throw buildError(400, 'INVALID_RELATED_PRODUCTS', 'relatedProducts contiene SKU duplicados o inválidos')
+  }
+
+  if (currentSku && skus.includes(currentSku)) {
+    throw buildError(400, 'INVALID_RELATED_PRODUCTS', 'Un producto no puede relacionarse consigo mismo')
+  }
+
+  const matches = await Product.find({ tenantId: tenantObjectId, sku: { $in: skus } })
+    .select({ sku: 1 })
+    .lean()
+  const existingSkus = new Set(matches.map((item) => item.sku))
+  const missing = skus.filter((sku) => !existingSkus.has(sku))
+
+  if (missing.length > 0) {
+    throw buildError(
+      400,
+      'RELATED_SKU_NOT_FOUND',
+      'Hay SKU relacionados que no existen en el tenant',
+      { missingSkus: missing }
+    )
+  }
 }
 
 export const createProduct = async (input: CreateProductInput): Promise<IProduct> => {
@@ -92,12 +148,14 @@ export const createProduct = async (input: CreateProductInput): Promise<IProduct
     }
   }
 
+  await validateRelatedProducts(input.tenantId, input.relatedProducts, input.sku)
+
   const product = new Product({
     tenantId: new Types.ObjectId(input.tenantId),
     productTypeId: input.productTypeId,
     productTypeVersion: input.productTypeVersion,
     sku: input.sku,
-    ean: input.ean,
+    ean: input.ean?.trim().length ? input.ean.trim() : undefined,
     name: input.name,
     description: input.description,
     price: input.price,
@@ -105,6 +163,7 @@ export const createProduct = async (input: CreateProductInput): Promise<IProduct
     category: input.category,
     status: input.status ?? 'active',
     customAttributes: input.customAttributes ?? {},
+    relatedProducts: normalizeRelatedProducts(input.relatedProducts),
   })
 
   const saved = await product.save()
@@ -173,6 +232,23 @@ export const getProductById = async (tenantId: string, id: string): Promise<IPro
   return product as IProduct | null
 }
 
+export const getProductBySku = async (tenantId: string, sku: string): Promise<IProduct | null> => {
+  if (!isValidObjectId(tenantId)) {
+    throw buildError(400, 'INVALID_TENANT', 'tenantId inválido')
+  }
+
+  if (!sku) {
+    throw buildError(400, 'INVALID_SKU', 'SKU requerido')
+  }
+
+  const product = await Product.findOne({
+    sku,
+    tenantId: new Types.ObjectId(tenantId),
+  }).lean()
+
+  return product as IProduct | null
+}
+
 export const updateProduct = async (
   tenantId: string,
   id: string,
@@ -184,6 +260,22 @@ export const updateProduct = async (
 
   if (!isValidObjectId(id)) {
     throw buildError(400, 'INVALID_ID', 'ID inválido')
+  }
+
+  const currentProduct = await Product.findOne({
+    _id: new Types.ObjectId(id),
+    tenantId: new Types.ObjectId(tenantId),
+  })
+    .select({ sku: 1 })
+    .lean()
+
+  if (!currentProduct) {
+    return null
+  }
+
+  if (updates.relatedProducts !== undefined) {
+    await validateRelatedProducts(tenantId, updates.relatedProducts, currentProduct.sku)
+    updates.relatedProducts = normalizeRelatedProducts(updates.relatedProducts)
   }
 
   if (updates.sku) {

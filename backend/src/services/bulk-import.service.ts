@@ -11,9 +11,15 @@ export interface ServiceError extends Error {
   details?: unknown
 }
 
+export type RowAction = 'created' | 'updated' | 'reactivated' | 'deactivated' | 'deleted' | 'error'
+type CsvAction = 'active' | 'inactive' | 'deleted'
+
 export interface ParsedRow {
   rowNumber: number
   data: Record<string, string>
+  originalData: Record<string, string>
+  action: CsvAction
+  invalidAction?: string
 }
 
 export interface ValidationError {
@@ -26,6 +32,24 @@ export interface BulkImportResult {
   success: boolean
   processId: string
   message: string
+}
+
+const SKU_MAX_LENGTH = 64
+const SKU_ALLOWED_REGEX = /^[A-Za-z0-9._-]+$/
+
+export const determineProcessOutcome = (
+  successCount: number,
+  errorCount: number
+): { status: 'completed' | 'failed' | 'partial'; errorSummary?: string } => {
+  if (errorCount === 0) {
+    return { status: 'completed' }
+  }
+
+  if (successCount === 0) {
+    return { status: 'failed', errorSummary: 'Todos los productos fallaron la validación' }
+  }
+
+  return { status: 'partial', errorSummary: `${errorCount} productos con errores` }
 }
 
 const buildError = (status: number, code: string, message: string, details?: unknown): ServiceError => {
@@ -44,6 +68,31 @@ const detectDelimiter = (line: string): string => {
   return semicolonCount > commaCount ? ';' : ','
 }
 
+const normalizeAction = (action: string | undefined): CsvAction | undefined => {
+  if (!action) return 'active'
+  const normalized = action.toLowerCase().trim()
+  if (normalized === 'active' || normalized === 'inactive' || normalized === 'deleted') {
+    return normalized
+  }
+  return undefined
+}
+
+const getRowValue = (row: ParsedRow, key: string): string => {
+  const direct = row.data[key]
+  if (typeof direct === 'string') {
+    return direct
+  }
+
+  const target = key.toLowerCase()
+  for (const [header, value] of Object.entries(row.data)) {
+    if (header.toLowerCase() === target) {
+      return value
+    }
+  }
+
+  return ''
+}
+
 export const parseCSV = (content: string): ParsedRow[] => {
   const lines = content.trim().split(/\r?\n/)
   if (lines.length < 2) {
@@ -54,18 +103,32 @@ export const parseCSV = (content: string): ParsedRow[] => {
   const headers = lines[0].split(delimiter).map((h) => h.trim())
   const rows: ParsedRow[] = []
 
+  const actionIndex = headers.findIndex((h) => h.toLowerCase() === 'action')
+
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim()
     if (!line) continue
 
     const values = line.split(delimiter)
     const data: Record<string, string> = {}
+    const originalData: Record<string, string> = {}
 
     headers.forEach((header, index) => {
-      data[header] = values[index]?.trim() ?? ''
+      const value = values[index]?.trim() ?? ''
+      data[header] = value
+      originalData[header] = value
     })
 
-    rows.push({ rowNumber: i + 1, data })
+    const actionValue = actionIndex >= 0 ? values[actionIndex]?.trim() : undefined
+    const normalizedAction = normalizeAction(actionValue)
+
+    rows.push({
+      rowNumber: i + 1,
+      data,
+      originalData,
+      action: normalizedAction ?? 'active',
+      invalidAction: actionValue && !normalizedAction ? actionValue : undefined,
+    })
   }
 
   return rows
@@ -73,96 +136,119 @@ export const parseCSV = (content: string): ParsedRow[] => {
 
 export const detectDuplicateSKUs = (rows: ParsedRow[]): Map<string, number[]> => {
   const skuMap = new Map<string, number[]>()
-  
+
   for (const row of rows) {
-    const sku = row.data.sku?.trim()
+    const sku = getRowValue(row, 'sku').trim()
     if (!sku) continue
-    
+
     const existing = skuMap.get(sku) || []
     existing.push(row.rowNumber)
     skuMap.set(sku, existing)
   }
-  
+
   const duplicates = new Map<string, number[]>()
   skuMap.forEach((rowNumbers, sku) => {
     if (rowNumbers.length > 1) {
       duplicates.set(sku, rowNumbers)
     }
   })
-  
+
   return duplicates
 }
 
 export const detectDuplicateEANs = (rows: ParsedRow[]): Map<string, number[]> => {
   const eanMap = new Map<string, number[]>()
-  
+
   for (const row of rows) {
-    const ean = row.data.ean?.trim()
+    const ean = getRowValue(row, 'ean').trim()
     if (!ean) continue
-    
+
     const existing = eanMap.get(ean) || []
     existing.push(row.rowNumber)
     eanMap.set(ean, existing)
   }
-  
+
   const duplicates = new Map<string, number[]>()
   eanMap.forEach((rowNumbers, ean) => {
     if (rowNumbers.length > 1) {
       duplicates.set(ean, rowNumbers)
     }
   })
-  
+
   return duplicates
 }
 
 export const validateRow = (
   row: ParsedRow,
-  productType: IProductType
-): { isValid: boolean; errors: ValidationError[]; productData?: Partial<IProduct> } => {
+  productType: IProductType,
+  existingProduct?: IProduct | null
+): { isValid: boolean; errors: ValidationError[]; productData?: Partial<IProduct>; action?: RowAction } => {
   const errors: ValidationError[] = []
+  const action = row.action
 
-  const productTypeId = row.data.productTypeId
-  if (!productTypeId) {
-    errors.push({ field: 'productTypeId', message: 'productTypeId es requerido', code: 'MISSING_FIELD' })
+  if (row.invalidAction) {
+    errors.push({ field: 'action', message: `Valor de acción inválido: ${row.invalidAction}`, code: 'INVALID_ACTION' })
   }
 
-  const sku = row.data.sku
+  const sku = getRowValue(row, 'sku').trim()
   if (!sku) {
     errors.push({ field: 'sku', message: 'sku es requerido', code: 'MISSING_FIELD' })
+  } else {
+    if (sku.length > SKU_MAX_LENGTH) {
+      errors.push({ field: 'sku', message: `sku no puede superar ${SKU_MAX_LENGTH} caracteres`, code: 'INVALID_LENGTH' })
+    }
+    if (!SKU_ALLOWED_REGEX.test(sku)) {
+      errors.push({ field: 'sku', message: 'sku contiene caracteres inválidos', code: 'INVALID_FORMAT' })
+    }
   }
 
-  const name = row.data.name
-  if (!name) {
-    errors.push({ field: 'name', message: 'name es requerido', code: 'MISSING_FIELD' })
+  const isUpdate = !!existingProduct
+  const isReactivation = existingProduct && existingProduct.status === 'inactive'
+
+  if ((action === 'inactive' || action === 'deleted') && !existingProduct) {
+    errors.push({ field: 'action', message: `No se puede ${action === 'inactive' ? 'desactivar' : 'eliminar'} un producto inexistente`, code: 'ACTION_ON_NONEXISTENT' })
   }
 
-  const priceStr = row.data.price
-  const price = priceStr ? parseFloat(priceStr) : NaN
-  if (isNaN(price)) {
-    errors.push({ field: 'price', message: 'price debe ser un número', code: 'INVALID_TYPE' })
+  if (!isUpdate) {
+    const productTypeId = getRowValue(row, 'productTypeId')
+    if (!productTypeId) {
+      errors.push({ field: 'productTypeId', message: 'productTypeId es requerido', code: 'MISSING_FIELD' })
+    }
+
+    const name = getRowValue(row, 'name')
+    if (!name) {
+      errors.push({ field: 'name', message: 'name es requerido', code: 'MISSING_FIELD' })
+    }
+
+    const priceStr = getRowValue(row, 'price')
+    const price = priceStr ? parseFloat(priceStr) : NaN
+    if (isNaN(price)) {
+      errors.push({ field: 'price', message: 'price debe ser un número', code: 'INVALID_TYPE' })
+    }
+
+    const stockStr = getRowValue(row, 'stock')
+    const stock = stockStr ? parseFloat(stockStr) : 0
+    if (isNaN(stock)) {
+      errors.push({ field: 'stock', message: 'stock debe ser un número', code: 'INVALID_TYPE' })
+    }
+
+    const category = getRowValue(row, 'category')
+    if (!category) {
+      errors.push({ field: 'category', message: 'category es requerido', code: 'MISSING_FIELD' })
+    }
   }
 
-  const stockStr = row.data.stock
-  const stock = stockStr ? parseFloat(stockStr) : 0
-  if (isNaN(stock)) {
-    errors.push({ field: 'stock', message: 'stock debe ser un número', code: 'INVALID_TYPE' })
-  }
-
-  const category = row.data.category
-  if (!category) {
-    errors.push({ field: 'category', message: 'category es requerido', code: 'MISSING_FIELD' })
-  }
-
-  const ean = row.data.ean || undefined
+  const eanValue = getRowValue(row, 'ean').trim()
+  const ean = eanValue.length > 0 ? eanValue : null
 
   const customAttributes: Record<string, unknown> = {}
   for (const attr of productType.attributes) {
     if (!attr.isActive || attr.isDeprecated) continue
 
-    const value = row.data[attr.key]
+    const value = getRowValue(row, attr.key)
     const hasValue = value && value.trim().length > 0
 
-    if (attr.required && !hasValue) {
+    if (!isUpdate && attr.required && !hasValue) {
       errors.push({ field: attr.key, message: `${attr.label} es requerido`, code: 'MISSING_REQUIRED_FIELD' })
       continue
     }
@@ -223,24 +309,61 @@ export const validateRow = (
   }
 
   if (errors.length > 0) {
-    return { isValid: false, errors }
+    return { isValid: false, errors, action: 'error' }
+  }
+
+  const productData: Partial<IProduct> = {}
+
+  if (!isUpdate) {
+    productData.productTypeId = productType.id
+    productData.productTypeVersion = productType.version
+    productData.sku = getRowValue(row, 'sku')
+    productData.name = getRowValue(row, 'name')
+    productData.price = parseFloat(getRowValue(row, 'price')) || 0
+    productData.stock = parseFloat(getRowValue(row, 'stock')) || 0
+    productData.category = getRowValue(row, 'category')
+  }
+
+  const rowName = getRowValue(row, 'name')
+  const rowPrice = getRowValue(row, 'price')
+  const rowStock = getRowValue(row, 'stock')
+  const rowCategory = getRowValue(row, 'category')
+
+  if (rowName) productData.name = rowName
+  if (rowPrice) productData.price = parseFloat(rowPrice)
+  if (rowStock) productData.stock = parseFloat(rowStock)
+  if (rowCategory) productData.category = rowCategory
+  if (isUpdate) {
+    if (ean) {
+      productData.ean = ean
+    }
+  } else {
+    productData.ean = ean
+  }
+  if (Object.keys(customAttributes).length > 0) {
+    productData.customAttributes = isUpdate
+      ? { ...(existingProduct?.customAttributes ?? {}), ...customAttributes }
+      : customAttributes
+  }
+
+  let finalAction: RowAction = isReactivation ? 'reactivated' : (isUpdate ? 'updated' : 'created')
+
+  if (action === 'inactive' || action === 'deleted') {
+    productData.status = 'inactive'
+    finalAction = action === 'deleted' ? 'deleted' : 'deactivated'
+  } else if (isReactivation) {
+    productData.status = 'active'
+    finalAction = 'reactivated'
+  } else if (isUpdate && existingProduct?.status !== 'active') {
+    productData.status = 'active'
+    finalAction = 'reactivated'
   }
 
   return {
     isValid: true,
     errors: [],
-    productData: {
-      productTypeId: productType.id,
-      productTypeVersion: productType.version,
-      sku,
-      ean,
-      name,
-      price,
-      stock,
-      category,
-      customAttributes,
-      status: 'active',
-    },
+    productData,
+    action: finalAction,
   }
 }
 
@@ -376,16 +499,32 @@ const executeBulkImport = async (processId: string, tenantId: string): Promise<v
     })
     await validationSubprocess.save()
 
-    const validationResults: Array<{ row: ParsedRow; isValid: boolean; errors: ValidationError[]; productData?: Partial<IProduct> }> = []
+    const validationResults: Array<{
+      row: ParsedRow
+      isValid: boolean
+      errors: ValidationError[]
+      productData?: Partial<IProduct>
+      existingProduct?: IProduct | null
+      action?: RowAction
+    }> = []
 
     const duplicateSKUs = detectDuplicateSKUs(rows)
     const duplicateEANs = detectDuplicateEANs(rows)
+    const rowSkus = rows.map((row) => getRowValue(row, 'sku').trim()).filter((sku) => sku.length > 0)
+    const existingProducts = await Product.find({
+      tenantId: new Types.ObjectId(tenantId),
+      sku: { $in: rowSkus },
+    }).lean()
+    const existingProductBySku = new Map(existingProducts.map((product) => [product.sku, product as unknown as IProduct]))
 
     for (const row of rows) {
       const errors: ValidationError[] = []
-      const productTypeId = row.data.productTypeId
+      const requestedProductTypeId = getRowValue(row, 'productTypeId')
+      const skuValue = getRowValue(row, 'sku').trim()
+      const existingProduct = skuValue ? existingProductBySku.get(skuValue) : null
+      const productTypeId = requestedProductTypeId || existingProduct?.productTypeId || ''
 
-      const skuDuplicate = duplicateSKUs.get(row.data.sku?.trim() || '')
+      const skuDuplicate = duplicateSKUs.get(skuValue)
       if (skuDuplicate && skuDuplicate.length > 1) {
         errors.push({ 
           field: 'sku', 
@@ -394,7 +533,7 @@ const executeBulkImport = async (processId: string, tenantId: string): Promise<v
         })
       }
 
-      const eanValue = row.data.ean?.trim()
+      const eanValue = getRowValue(row, 'ean').trim()
       if (eanValue) {
         const eanDuplicate = duplicateEANs.get(eanValue)
         if (eanDuplicate && eanDuplicate.length > 1) {
@@ -413,6 +552,7 @@ const executeBulkImport = async (processId: string, tenantId: string): Promise<v
           row,
           isValid: false,
           errors: [...errors, { field: 'productTypeId', message: `Tipo de producto '${productTypeId}' no existe`, code: 'INVALID_TYPE' }],
+          action: 'error',
         })
         continue
       }
@@ -421,12 +561,14 @@ const executeBulkImport = async (processId: string, tenantId: string): Promise<v
         errors.push({ field: 'productTypeId', message: `El tipo de producto '${productTypeId}' está obsoleto y no permite nuevas importaciones`, code: 'DEPRECATED_TYPE' })
       }
 
-      const result = validateRow(row, productType)
+      const result = validateRow(row, productType, existingProduct)
       validationResults.push({ 
         row, 
         isValid: result.isValid && errors.length === 0, 
         errors: [...errors, ...result.errors],
-        productData: result.productData 
+        productData: result.productData,
+        existingProduct,
+        action: result.action,
       })
     }
 
@@ -446,6 +588,11 @@ const executeBulkImport = async (processId: string, tenantId: string): Promise<v
 
     let successCount = 0
     let errorCount = 0
+    let createdCount = 0
+    let updatedCount = 0
+    let reactivatedCount = 0
+    let deactivatedCount = 0
+    let deletedCount = 0
 
     for (const result of validationResults) {
       if (!result.isValid) {
@@ -453,7 +600,8 @@ const executeBulkImport = async (processId: string, tenantId: string): Promise<v
           processId,
           rowNumber: result.row.rowNumber,
           status: 'error',
-          originalData: result.row.data,
+          action: 'error',
+          originalData: result.row.originalData,
           errors: result.errors,
           processedAt: new Date(),
           retryAttempt: 0,
@@ -462,18 +610,43 @@ const executeBulkImport = async (processId: string, tenantId: string): Promise<v
         errorCount++
       } else if (result.productData) {
         try {
-          const product = new Product({
-            ...result.productData,
-            tenantId: new Types.ObjectId(tenantId),
-          } as IProduct)
+          let product: IProduct | null = null
+          if (result.existingProduct) {
+            product = await Product.findOneAndUpdate(
+              { _id: result.existingProduct._id, tenantId: new Types.ObjectId(tenantId) },
+              { $set: result.productData },
+              { new: true }
+            ) as IProduct | null
+          } else {
+            const createPayload = {
+              ...result.productData,
+              tenantId: new Types.ObjectId(tenantId),
+            } as Partial<IProduct>
 
-          await product.save()
+            if (!createPayload.ean) {
+              delete createPayload.ean
+            }
+
+            const createdProduct = new Product(createPayload as IProduct)
+            product = await createdProduct.save()
+          }
+
+          if (!product) {
+            throw buildError(404, 'PRODUCT_NOT_FOUND', 'Producto no encontrado para actualizar')
+          }
+
+          if (result.action === 'created') createdCount++
+          if (result.action === 'updated') updatedCount++
+          if (result.action === 'reactivated') reactivatedCount++
+          if (result.action === 'deactivated') deactivatedCount++
+          if (result.action === 'deleted') deletedCount++
 
           const itemLog = new ItemProcessLog({
             processId,
             rowNumber: result.row.rowNumber,
             status: 'success',
-            originalData: result.row.data,
+            action: result.action,
+            originalData: result.row.originalData,
             errors: [],
             processedAt: new Date(),
             productId: product._id as Types.ObjectId,
@@ -486,7 +659,8 @@ const executeBulkImport = async (processId: string, tenantId: string): Promise<v
             processId,
             rowNumber: result.row.rowNumber,
             status: 'error',
-            originalData: result.row.data,
+            action: 'error',
+            originalData: result.row.originalData,
             errors: [{ field: '_db', message: (error as Error).message, code: 'DB_ERROR' }],
             processedAt: new Date(),
             retryAttempt: 0,
@@ -505,16 +679,15 @@ const executeBulkImport = async (processId: string, tenantId: string): Promise<v
     process.processedItems = rows.length
     process.successItems = successCount
     process.errorItems = errorCount
+    process.created = createdCount
+    process.updated = updatedCount
+    process.reactivated = reactivatedCount
+    process.deactivated = deactivatedCount
+    process.deleted = deletedCount
 
-    if (errorCount === 0) {
-      process.status = 'completed'
-    } else if (successCount === 0) {
-      process.status = 'failed'
-      process.errorSummary = 'Todos los productos fallaron la validación'
-    } else {
-      process.status = 'partial'
-      process.errorSummary = `${errorCount} productos con errores`
-    }
+    const outcome = determineProcessOutcome(successCount, errorCount)
+    process.status = outcome.status
+    process.errorSummary = outcome.errorSummary
 
     process.completedAt = new Date()
     await process.save()

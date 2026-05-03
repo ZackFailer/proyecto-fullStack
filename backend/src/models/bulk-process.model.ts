@@ -13,6 +13,11 @@ export interface IBulkProcess extends Document {
   processedItems: number
   successItems: number
   errorItems: number
+  created: number
+  updated: number
+  reactivated: number
+  deactivated: number
+  deleted: number
   startedAt: Date
   completedAt?: Date
   errorSummary?: string
@@ -36,6 +41,11 @@ const bulkProcessSchema = new Schema<IBulkProcess>(
     processedItems: { type: Number, default: 0 },
     successItems: { type: Number, default: 0 },
     errorItems: { type: Number, default: 0 },
+    created: { type: Number, default: 0 },
+    updated: { type: Number, default: 0 },
+    reactivated: { type: Number, default: 0 },
+    deactivated: { type: Number, default: 0 },
+    deleted: { type: Number, default: 0 },
     startedAt: { type: Date, default: Date.now },
     completedAt: { type: Date, default: undefined },
     errorSummary: { type: String, default: undefined },

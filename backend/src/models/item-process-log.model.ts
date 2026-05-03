@@ -12,6 +12,7 @@ export interface IItemProcessLog extends Document {
   processId: string
   rowNumber: number
   status: ItemProcessStatus
+  action?: 'created' | 'updated' | 'reactivated' | 'deactivated' | 'deleted' | 'error'
   originalData: Record<string, unknown>
   errors: ItemProcessError[]
   processedAt: Date
@@ -38,6 +39,11 @@ const itemProcessLogSchema = new Schema<IItemProcessLog>(
       type: String,
       enum: ['success', 'error', 'skipped'],
       required: true,
+    },
+    action: {
+      type: String,
+      enum: ['created', 'updated', 'reactivated', 'deactivated', 'deleted', 'error'],
+      default: undefined,
     },
     originalData: { type: Schema.Types.Mixed, required: true },
     errors: { type: [itemProcessErrorSchema], default: [] },

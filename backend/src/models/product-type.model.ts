@@ -19,6 +19,7 @@ export interface IProductType extends Document {
   tenantId: Types.ObjectId
   id: string
   name: string
+  conversionAttribute?: string
   version: number
   isActive: boolean
   status: 'draft' | 'published'
@@ -53,6 +54,7 @@ const productTypeSchema = new Schema<IProductType>(
     tenantId: { type: Schema.Types.ObjectId, required: true, index: true },
     id: { type: String, required: true, trim: true },
     name: { type: String, required: true, trim: true },
+    conversionAttribute: { type: String, trim: true, default: undefined },
     version: { type: Number, required: true, default: 1, min: 1 },
     isActive: { type: Boolean, default: true },
     status: { type: String, enum: ['draft', 'published'], default: 'draft' },

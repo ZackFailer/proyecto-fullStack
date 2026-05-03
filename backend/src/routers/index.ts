@@ -11,6 +11,7 @@ import tenantRouter from './tenant.routes.js';
 import { resolveTenantContext } from '../middleware/tenantContext.middleware.js';
 import passwordChangeRequestRouter from './password-change-request.routes.js';
 import loginAttemptRouter from './login-attempt.routes.js';
+import inventoryRouter from './inventory.routes.js';
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use('/product-types', productTypeRoutes);
 router.use('/bulk-import', bulkImportRoutes);
 router.use('/password-change-requests', passwordChangeRequestRouter);
 router.use('/login-attempts', loginAttemptRouter);
+router.use('/inventory', inventoryRouter);
 
 export default router;

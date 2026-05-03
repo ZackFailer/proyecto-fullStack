@@ -96,3 +96,39 @@ export const deactivateProductType = async (req: Request, res: Response, next: N
     next(error)
   }
 }
+
+export const downloadTemplate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const tenantId = req.user?.tenantId as string | undefined
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: 'tenantId requerido' })
+      return
+    }
+
+    const { id } = req.params
+    const format = (req.query.format as string) || 'xlsx'
+
+    const productType = await productTypeService.getProductTypeById(tenantId, id)
+
+    if (!productType) {
+      res.status(404).json({ success: false, message: 'Tipo de producto no encontrado' })
+      return
+    }
+
+    if (format === 'csv') {
+      const csv = productTypeService.generateCsvTemplate(productType)
+      res.setHeader('Content-Type', 'text/csv;charset=utf-8')
+      res.setHeader('Content-Disposition', `attachment; filename="${productType.id}-template.csv"`)
+      res.status(200).send(csv)
+      return
+    }
+
+    const buffer = await productTypeService.generateExcelTemplate(productType)
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', `attachment; filename="${productType.id}-template.xlsx"`)
+    res.status(200).send(buffer)
+  } catch (error) {
+    next(error)
+  }
+}
