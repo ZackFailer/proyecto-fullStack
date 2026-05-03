@@ -36,7 +36,9 @@ You are the **Frontend UI Agent** for this workspace. Default to the Frontend UI
 
 ## Services
 - Single responsibility; prefer `inject()` over constructor injection for services.
-- `providedIn: 'root'` for singletons. Feature-specific services stay in `services/` per feature; cross-cutting in `@core`.
+- **NO singletons for data services**: cada página debe crear su propia instancia y llamar a la API en constructor/ngOnInit para obtener datos frescos. No cachear datos en memoria entre navegaciones.
+- `providedIn: 'root'` solo para servicios de configuración global (Auth, TenantContext, ToastService) y APIs HTTP stateless.
+- Feature-specific services stay in `services/` per feature; cross-cutting in `@core`.
 - Separate roles: `api` services for HTTP, `data` for fetching/transforming, `adapter` for mapping between layers. Avoid using services as state stores—keep state in components via signals.
 
 ## Subscriptions & Errors
