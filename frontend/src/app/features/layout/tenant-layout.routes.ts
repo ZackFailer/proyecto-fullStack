@@ -24,13 +24,17 @@ const tenantLayoutRoutes: Routes = [
         loadComponent: () => import('../tenant/products/pages/product-list')
       },
       {
-        path: 'product-settings',
-        loadComponent: () => import('../tenant/products/pages/product-settings')
-      },
-      {
         path: 'products/import',
         loadComponent: () => import('../tenant/products/pages/bulk-import'),
         canActivate: [tenantAdminGuard]
+      },
+      {
+        path: 'products/:sku',
+        loadComponent: () => import('../tenant/products/pages/product-detail')
+      },
+      {
+        path: 'product-settings',
+        loadComponent: () => import('../tenant/products/pages/product-settings')
       },
       {
         path: 'users',

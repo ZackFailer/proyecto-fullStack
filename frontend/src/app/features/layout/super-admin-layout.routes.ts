@@ -63,6 +63,10 @@ const SuperAdminLayout: Routes = [
             loadComponent: () => import('../tenant/products/pages/bulk-import')
           },
           {
+            path: 'products/:sku',
+            loadComponent: () => import('../tenant/products/pages/product-detail')
+          },
+          {
             path: 'product-settings',
             loadComponent: () => import('../tenant/products/pages/product-settings')
           },

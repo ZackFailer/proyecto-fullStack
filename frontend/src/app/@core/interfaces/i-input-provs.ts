@@ -8,4 +8,5 @@ export interface IInputProvs {
   disabled?: boolean;
   value?: string | number | null;
   control?: FormControl<string | number | null>;
+  key?: string;
 }
