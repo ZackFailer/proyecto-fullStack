@@ -11,6 +11,7 @@ vi.mock('../services/bulk-import.service.js', () => ({
   getProcessHistory: vi.fn(),
   getProcessById: vi.fn(),
   getProcessErrors: vi.fn(),
+  getProcessFile: vi.fn(),
 }));
 
 vi.mock('../services/login-attempt.service.js', () => ({
@@ -203,6 +204,53 @@ describe('bulk-import endpoints', () => {
       expect(response.status).toBe(403);
     });
   });
+
+  describe('download original process file', () => {
+    it('allows admin/operator to download original file', async () => {
+      vi.mocked(bulkImportService.getProcessFile).mockResolvedValue({
+        fileName: 'catalog.csv',
+        fileContent: 'sku,name\nSKU-1,Item 1',
+      })
+
+      const adminToken = signToken({ id: 'u-admin', role: 'admin', tenantId })
+      const operatorToken = signToken({ id: 'u-op', role: 'operator', tenantId })
+
+      const adminResponse = await request(app)
+        .get('/api/bulk-import/process-1/file')
+        .set(authHeader(adminToken))
+
+      const operatorResponse = await request(app)
+        .get('/api/bulk-import/process-1/file')
+        .set(authHeader(operatorToken))
+
+      expect(adminResponse.status).toBe(200)
+      expect(operatorResponse.status).toBe(200)
+      expect(adminResponse.text).toContain('SKU-1')
+      expect(adminResponse.header['content-disposition']).toContain('catalog.csv')
+    })
+
+    it('rejects viewer when downloading original file', async () => {
+      const token = signToken({ id: 'u-viewer', role: 'viewer', tenantId })
+
+      const response = await request(app)
+        .get('/api/bulk-import/process-1/file')
+        .set(authHeader(token))
+
+      expect(response.status).toBe(403)
+    })
+
+    it('returns 404 when file is unavailable', async () => {
+      vi.mocked(bulkImportService.getProcessFile).mockResolvedValue(null)
+
+      const token = signToken({ id: 'u-admin', role: 'admin', tenantId })
+
+      const response = await request(app)
+        .get('/api/bulk-import/process-1/file')
+        .set(authHeader(token))
+
+      expect(response.status).toBe(404)
+    })
+  })
 
   describe('start bulk import', () => {
     it('allows admin to start bulk import', async () => {

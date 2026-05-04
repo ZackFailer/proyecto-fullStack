@@ -43,7 +43,16 @@ const tenantLayoutRoutes: Routes = [
       },
       {
         path: 'inventory',
-        loadComponent: () => import('../tenant/inventory/pages/inventory/inventory')
+        loadComponent: () => import('../tenant/inventory/pages/inventory-list/inventory-list')
+      },
+      {
+        path: 'inventory/:sku',
+        loadComponent: () => import('../tenant/inventory/pages/product-detail/product-detail')
+      },
+      {
+        path: 'inventory/transfers',
+        loadComponent: () => import('../tenant/inventory/pages/transfer-history/transfer-history'),
+        canActivate: [tenantPrivilegedGuard]
       },
       {
         path: 'customers',

@@ -50,4 +50,10 @@ export class ProductApi {
       map(response => response.data)
     );
   }
+
+  updateProductBySku(sku: string, product: Partial<IProduct>): Observable<IProduct> {
+    return this.http.put<{ success: boolean; data: IProduct }>(`${this.apiUrl}/sku/${sku}`, product).pipe(
+      map(response => response.data)
+    );
+  }
 }

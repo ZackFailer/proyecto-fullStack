@@ -132,3 +132,44 @@ export const downloadTemplate = async (req: Request, res: Response, next: NextFu
     next(error)
   }
 }
+
+export const downloadMultiTypeTemplate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const tenantId = req.user?.tenantId as string | undefined
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: 'tenantId requerido' })
+      return
+    }
+
+    const format = (req.query.format as string) || 'xlsx'
+    const allParam = typeof req.query.all === 'string' ? req.query.all.toLowerCase() : undefined
+
+    if (req.path.endsWith('/template') && allParam !== 'true') {
+      res.status(400).json({
+        success: false,
+        message: 'Para descargar la plantilla general usa ?all=true',
+      })
+      return
+    }
+
+    const productTypes = await productTypeService.listProductTypes(tenantId)
+
+    if (productTypes.length === 0) {
+      res.status(404).json({ success: false, message: 'No hay tipos de producto disponibles' })
+      return
+    }
+
+    if (format === 'csv') {
+      res.status(400).json({ success: false, message: 'CSV multi-tipo no soportado, usa XLSX' })
+      return
+    }
+
+    const buffer = await productTypeService.generateMultiTypeExcelTemplate(productTypes)
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', 'attachment; filename="catalogo_completo.xlsx"')
+    res.status(200).send(buffer)
+  } catch (error) {
+    next(error)
+  }
+}

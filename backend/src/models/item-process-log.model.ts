@@ -8,6 +8,11 @@ export interface ItemProcessError {
   code: string
 }
 
+export interface ItemProcessWarning {
+  entry: string
+  reason: string
+}
+
 export interface IItemProcessLog extends Document {
   processId: string
   rowNumber: number
@@ -15,6 +20,7 @@ export interface IItemProcessLog extends Document {
   action?: 'created' | 'updated' | 'reactivated' | 'deactivated' | 'deleted' | 'error'
   originalData: Record<string, unknown>
   errors: ItemProcessError[]
+  warnings: ItemProcessWarning[]
   processedAt: Date
   productId?: Types.ObjectId
   retryAttempt?: number
@@ -27,6 +33,14 @@ const itemProcessErrorSchema = new Schema<ItemProcessError>(
     field: { type: String, required: true },
     message: { type: String, required: true },
     code: { type: String, required: true },
+  },
+  { _id: false }
+)
+
+const itemProcessWarningSchema = new Schema<ItemProcessWarning>(
+  {
+    entry: { type: String, required: true },
+    reason: { type: String, required: true },
   },
   { _id: false }
 )
@@ -47,6 +61,7 @@ const itemProcessLogSchema = new Schema<IItemProcessLog>(
     },
     originalData: { type: Schema.Types.Mixed, required: true },
     errors: { type: [itemProcessErrorSchema], default: [] },
+    warnings: { type: [itemProcessWarningSchema], default: [] },
     processedAt: { type: Date, default: Date.now },
     productId: { type: Schema.Types.ObjectId, default: undefined },
     retryAttempt: { type: Number, default: 0, min: 0 },

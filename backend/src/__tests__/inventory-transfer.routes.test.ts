@@ -11,6 +11,9 @@ vi.mock('../services/inventory-transfer.service.js', () => ({
   previewTransfer: vi.fn(),
   getTransferHistory: vi.fn(),
   cleanupPendingTransfers: vi.fn(),
+  rollbackTransfer: vi.fn(),
+  markTransferAsReverted: vi.fn(),
+  getProductTimeline: vi.fn(),
 }))
 
 vi.mock('../services/product.service.js', () => ({
@@ -413,6 +416,72 @@ describe('inventory transfer endpoints', () => {
     expect(inventoryTransferService.getTransferHistory).toHaveBeenCalledWith(tenantId, undefined, 3, 10)
     expect(response.body.data.page).toBe(3)
     expect(response.body.data.limit).toBe(10)
+  })
+
+  it('rolls back transfer for admin role', async () => {
+    vi.mocked(inventoryTransferService.rollbackTransfer).mockResolvedValue({
+      success: true,
+      fromSKU: 'SKU-B',
+      toSKU: 'SKU-A',
+      quantityFrom: 5,
+      quantityTo: 10,
+      conversionApplied: false,
+      fromStockAfter: 10,
+      toStockAfter: 20,
+      status: 'completed',
+    })
+    vi.mocked(inventoryTransferService.markTransferAsReverted).mockResolvedValue(undefined)
+
+    const token = signToken({ id: 'u-admin', role: 'admin', tenantId })
+
+    const response = await request(app)
+      .post('/api/inventory/transfer/507f1f77bcf86cd799439013/rollback')
+      .set(authHeader(token))
+      .send({ reason: 'Error de carga' })
+
+    expect(response.status).toBe(200)
+    expect(response.body.success).toBe(true)
+    expect(inventoryTransferService.rollbackTransfer).toHaveBeenCalled()
+    expect(inventoryTransferService.markTransferAsReverted).toHaveBeenCalled()
+  })
+
+  it('rejects rollback for operator role', async () => {
+    const token = signToken({ id: 'u-operator', role: 'operator', tenantId })
+
+    const response = await request(app)
+      .post('/api/inventory/transfer/507f1f77bcf86cd799439013/rollback')
+      .set(authHeader(token))
+      .send({ reason: 'No autorizado' })
+
+    expect(response.status).toBe(403)
+    expect(inventoryTransferService.rollbackTransfer).not.toHaveBeenCalled()
+  })
+
+  it('returns product timeline for admin/operator', async () => {
+    vi.mocked(inventoryTransferService.getProductTimeline).mockResolvedValue([
+      {
+        id: 'event-1',
+        type: 'transfer',
+        action: 'completed',
+        createdAt: new Date(),
+        payload: { fromSKU: 'SKU-A', toSKU: 'SKU-B' },
+      },
+    ])
+
+    const adminToken = signToken({ id: 'u-admin', role: 'admin', tenantId })
+    const operatorToken = signToken({ id: 'u-op', role: 'operator', tenantId })
+
+    const adminResponse = await request(app)
+      .get('/api/products/SKU-A/timeline')
+      .set(authHeader(adminToken))
+
+    const operatorResponse = await request(app)
+      .get('/api/products/SKU-A/timeline')
+      .set(authHeader(operatorToken))
+
+    expect(adminResponse.status).toBe(200)
+    expect(operatorResponse.status).toBe(200)
+    expect(adminResponse.body.data).toHaveLength(1)
   })
 
   it('returns default pagination when no parameters provided', async () => {

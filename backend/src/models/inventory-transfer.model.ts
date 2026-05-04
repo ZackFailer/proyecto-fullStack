@@ -1,6 +1,11 @@
 import { Schema, model, Document, Types } from 'mongoose'
 
-export type TransferStatus = 'pending' | 'completed' | 'failed'
+export type TransferStatus = 'pending' | 'completed' | 'failed' | 'reverted'
+
+export interface ITransferSource {
+  type: 'manual' | 'rollback'
+  originalTransferId?: Types.ObjectId
+}
 
 export interface IInventoryTransfer extends Document {
   tenantId: Types.ObjectId
@@ -15,13 +20,28 @@ export interface IInventoryTransfer extends Document {
     fromValue: number
     toValue: number
   }
+  conversionPreview?: {
+    fromAttribute: string
+    toAttribute: string
+    fromValue: number
+    toValue: number
+  }
   userId: Types.ObjectId
+  source?: ITransferSource
   reason?: string
   status: TransferStatus
   createdAt: Date
   completedAt?: Date
   error?: string
 }
+
+const transferSourceSchema = new Schema<ITransferSource>(
+  {
+    type: { type: String, enum: ['manual', 'rollback'], required: true },
+    originalTransferId: { type: Schema.Types.ObjectId, default: undefined },
+  },
+  { _id: false }
+)
 
 const inventoryTransferSchema = new Schema<IInventoryTransfer>(
   {
@@ -42,11 +62,23 @@ const inventoryTransferSchema = new Schema<IInventoryTransfer>(
       _id: false,
       default: undefined,
     },
+    conversionPreview: {
+      type: {
+        fromAttribute: { type: String, required: true, trim: true },
+        toAttribute: { type: String, required: true, trim: true },
+        fromValue: { type: Number, required: true },
+        toValue: { type: Number, required: true },
+      },
+      required: false,
+      _id: false,
+      default: undefined,
+    },
     userId: { type: Schema.Types.ObjectId, required: true },
+    source: { type: transferSourceSchema, default: undefined },
     reason: { type: String, trim: true },
     status: {
       type: String,
-      enum: ['pending', 'completed', 'failed'],
+      enum: ['pending', 'completed', 'failed', 'reverted'],
       default: 'pending'
     },
     completedAt: { type: Date, default: undefined },

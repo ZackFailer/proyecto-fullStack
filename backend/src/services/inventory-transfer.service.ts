@@ -43,6 +43,14 @@ export interface TransferResult {
   error?: string
 }
 
+export interface TransferTimelineItem {
+  id: string
+  type: 'transfer' | 'bulk-import'
+  action: string
+  createdAt: Date
+  payload: Record<string, unknown>
+}
+
 export interface PaginatedTransfers {
   items: Array<{
     id: string
@@ -57,8 +65,12 @@ export interface PaginatedTransfers {
       fromValue: number
       toValue: number
     }
+    source?: {
+      type: 'manual' | 'rollback'
+      originalTransferId?: Types.ObjectId
+    }
     reason?: string
-    status: 'pending' | 'completed' | 'failed'
+    status: 'pending' | 'completed' | 'failed' | 'reverted'
     createdAt: Date
     completedAt?: Date
     error?: string
@@ -66,6 +78,10 @@ export interface PaginatedTransfers {
   total: number
   page: number
   limit: number
+}
+
+export interface RollbackTransferInput {
+  reason?: string
 }
 
 const PENDING_TIMEOUT_MS = 30 * 60 * 1000
@@ -281,7 +297,14 @@ export const transferInventory = async (
     quantityTo,
     conversionApplied,
     conversionFactor,
+    conversionPreview: conversionFactor,
     userId: userObjectId,
+    source: dto.reason?.startsWith('Rollback de transferencia')
+      ? {
+          type: 'rollback',
+          originalTransferId: extractOriginalTransferId(dto.reason),
+        }
+      : { type: 'manual' },
     reason: dto.reason,
     status: 'pending',
   })
@@ -353,6 +376,14 @@ export const transferInventory = async (
   }
 }
 
+const buildRollbackReason = (transferId: string, customReason?: string): string => {
+  if (!customReason || customReason.trim().length === 0) {
+    return `Rollback de transferencia ${transferId}`
+  }
+
+  return `Rollback de transferencia ${transferId}: ${customReason.trim()}`
+}
+
 const executeTransferWithTransaction = async (
   tenantObjectId: Types.ObjectId,
   fromProduct: ProductSnapshot,
@@ -378,6 +409,23 @@ const executeTransferWithTransaction = async (
   } finally {
     session.endSession()
   }
+}
+
+const extractOriginalTransferId = (reason?: string): Types.ObjectId | undefined => {
+  if (!reason) {
+    return undefined
+  }
+
+  const match = reason.match(/Rollback de transferencia ([a-f\d]{24})/i)
+  if (!match) {
+    return undefined
+  }
+
+  if (!Types.ObjectId.isValid(match[1])) {
+    return undefined
+  }
+
+  return new Types.ObjectId(match[1])
 }
 
 const executeTransferFallback = async (
@@ -497,6 +545,7 @@ export const getTransferHistory = async (
       quantityTo: t.quantityTo,
       conversionApplied: t.conversionApplied,
       conversionFactor: t.conversionFactor,
+      source: t.source,
       reason: t.reason,
       status: t.status,
       createdAt: t.createdAt,
@@ -507,6 +556,136 @@ export const getTransferHistory = async (
     page,
     limit,
   }
+}
+
+export const rollbackTransfer = async (
+  transferId: string,
+  tenantId: string,
+  userId: string,
+  input: RollbackTransferInput = {}
+): Promise<TransferResult> => {
+  if (!Types.ObjectId.isValid(transferId)) {
+    throw { status: 400, code: 'INVALID_TRANSFER_ID', message: 'transferId inválido' }
+  }
+
+  const transfer = await InventoryTransfer.findOne({
+    _id: new Types.ObjectId(transferId),
+    tenantId: new Types.ObjectId(tenantId),
+  }).lean()
+
+  if (!transfer) {
+    throw { status: 404, code: 'TRANSFER_NOT_FOUND', message: 'Transferencia no encontrada' }
+  }
+
+  if (transfer.status !== 'completed') {
+    throw { status: 409, code: 'TRANSFER_NOT_REVERSIBLE', message: 'La transferencia no está completada' }
+  }
+
+  const existingRollback = await InventoryTransfer.findOne({
+    tenantId: new Types.ObjectId(tenantId),
+    'source.originalTransferId': transfer._id,
+    'source.type': 'rollback',
+  })
+    .select({ _id: 1 })
+    .lean()
+
+  if (existingRollback) {
+    throw {
+      status: 409,
+      code: 'TRANSFER_ALREADY_ROLLED_BACK',
+      message: 'La transferencia ya fue revertida',
+    }
+  }
+
+  return transferInventory(
+    {
+      fromSKU: transfer.toSKU,
+      toSKU: transfer.fromSKU,
+      quantity: transfer.quantityTo,
+      reason: buildRollbackReason(transfer._id.toString(), input.reason),
+    },
+    tenantId,
+    userId
+  )
+}
+
+export const markTransferAsReverted = async (transferId: string, tenantId: string): Promise<void> => {
+  await InventoryTransfer.updateOne(
+    {
+      _id: new Types.ObjectId(transferId),
+      tenantId: new Types.ObjectId(tenantId),
+    },
+    {
+      $set: {
+        status: 'reverted',
+        completedAt: new Date(),
+      },
+    }
+  )
+}
+
+export const getProductTimeline = async (
+  tenantId: string,
+  sku: string,
+  limit: number = 50
+): Promise<TransferTimelineItem[]> => {
+  const tenantObjectId = new Types.ObjectId(tenantId)
+  const product = await Product.findOne({ tenantId: tenantObjectId, sku })
+    .select({ _id: 1 })
+    .lean()
+
+  if (!product) {
+    throw { status: 404, code: 'PRODUCT_NOT_FOUND', message: 'Producto no encontrado' }
+  }
+
+  const [transfers, itemLogs] = await Promise.all([
+    InventoryTransfer.find({
+      tenantId: tenantObjectId,
+      $or: [{ fromSKU: sku }, { toSKU: sku }],
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean(),
+    (async () => {
+      const { ItemProcessLog } = await import('../models/item-process-log.model.js')
+      return ItemProcessLog.find({ productId: product._id })
+        .sort({ processedAt: -1 })
+        .limit(limit)
+        .lean()
+    })(),
+  ])
+
+  const transferItems: TransferTimelineItem[] = transfers.map((transfer) => ({
+    id: transfer._id.toString(),
+    type: 'transfer',
+    action: transfer.status,
+    createdAt: transfer.createdAt,
+    payload: {
+      fromSKU: transfer.fromSKU,
+      toSKU: transfer.toSKU,
+      quantityFrom: transfer.quantityFrom,
+      quantityTo: transfer.quantityTo,
+      conversionApplied: transfer.conversionApplied,
+      reason: transfer.reason,
+    },
+  }))
+
+  const importItems: TransferTimelineItem[] = itemLogs.map((log) => ({
+    id: log._id.toString(),
+    type: 'bulk-import',
+    action: log.action ?? log.status,
+    createdAt: log.processedAt,
+    payload: {
+      rowNumber: log.rowNumber,
+      status: log.status,
+      action: log.action,
+      errors: log.errors,
+    },
+  }))
+
+  return [...transferItems, ...importItems]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, limit)
 }
 
 export const cleanupPendingTransfers = async (): Promise<number> => {

@@ -9,7 +9,7 @@ import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { BulkImportData } from '../services/bulk-import-data';
-import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
+import { ProductTypeApi } from '../services/product-type-api';
 
 @Component({
   selector: 'app-bulk-import',
@@ -20,6 +20,15 @@ import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
     <div class="grid gap-4">
       <p-card header="Importación Masiva de Productos">
         <div class="space-y-4">
+          <div class="flex justify-end">
+            <p-button
+              label="Descargar plantilla general"
+              icon="pi pi-download"
+              styleClass="p-button-outlined p-button-sm"
+              (onClick)="downloadGeneralTemplate()"
+            />
+          </div>
+
           <div class="border-2 border-dashed border-surface-300 rounded-lg p-8 text-center hover:border-primary transition-colors">
             <input type="file" accept=".csv" (change)="onFileSelected($event)" class="hidden" #fileInput>
             <div class="cursor-pointer" (click)="fileInput.click()">
@@ -101,8 +110,8 @@ import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
 
             @if (currentProcess()!.status !== 'pending' && currentProcess()!.status !== 'processing') {
               <div class="flex gap-2">
-                @if (errors().length > 0) {
-                  <p-button label="Descargar Errores" icon="pi pi-download" styleClass="p-button-outlined" (onClick)="downloadErrors()" />
+                @if (errors().length > 0 || warnings().length > 0) {
+                  <p-button label="Descargar Detalles" icon="pi pi-download" styleClass="p-button-outlined" (onClick)="downloadDetails()" />
                 }
                 <p-button label="Limpiar" styleClass="p-button-text" (onClick)="clearProcess()" />
               </div>
@@ -141,6 +150,7 @@ import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
                   @if (process.errorItems > 0) {
                     <p-button icon="pi pi-eye" styleClass="p-button-text p-button-sm" (onClick)="viewErrors(process.id)" />
                   }
+                  <p-button icon="pi pi-download" styleClass="p-button-text p-button-sm" (onClick)="downloadOriginalFile(process.id)" />
                 </td>
               </tr>
             </ng-template>
@@ -151,14 +161,35 @@ import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
       </p-card>
 
       @if (showErrorsDialog()) {
-      <p-dialog 
-        header="Errores de Importación" 
-        [visible]="showErrorsDialog()" 
+      <p-dialog
+        header="Detalles de Importación"
+        [visible]="showErrorsDialog()"
         (visibleChange)="onErrorsDialogChange($event)"
-        [modal]="true" 
+        [modal]="true"
         [style]="{width: '80vw'}"
       >
-        @if (errors().length > 0) {
+        <div class="flex gap-2 mb-4 border-b border-surface-200">
+          @if (errors().length > 0) {
+            <button
+              type="button"
+              [class]="activeTab() === 'errors' ? 'border-primary text-primary border-b-2 pb-2 px-4' : 'text-surface-600 pb-2 px-4 hover:text-primary'"
+              (click)="setActiveTab('errors')"
+            >
+              Errores ({{ errors().length }})
+            </button>
+          }
+          @if (warnings().length > 0) {
+            <button
+              type="button"
+              [class]="activeTab() === 'warnings' ? 'border-primary text-primary border-b-2 pb-2 px-4' : 'text-surface-600 pb-2 px-4 hover:text-primary'"
+              (click)="setActiveTab('warnings')"
+            >
+              Advertencias ({{ warnings().length }})
+            </button>
+          }
+        </div>
+
+        @if (activeTab() === 'errors') {
           <p-table [value]="errors()" [paginator]="true" [rows]="20" responsiveLayout="scroll">
             <ng-template pTemplate="header">
               <tr>
@@ -184,6 +215,36 @@ import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
             </ng-template>
           </p-table>
         }
+
+        @if (activeTab() === 'warnings') {
+          <div class="mb-3 text-sm text-surface-600">
+            Las siguientes filas se importaron correctamente pero tuvieron relaciones omitidas:
+          </div>
+          <p-table [value]="warnings()" [paginator]="true" [rows]="20" responsiveLayout="scroll">
+            <ng-template pTemplate="header">
+              <tr>
+                <th>Fila</th>
+                <th>Acción</th>
+                <th>Advertencias</th>
+                <th>Datos Originales</th>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-warning>
+              <tr>
+                <td>{{ warning.rowNumber }}</td>
+                <td>{{ warning.action || 'creado' }}</td>
+                <td>
+                  @for (warn of warning.warnings; track warn.entry) {
+                    <p class="text-amber-600 text-sm">{{ warn.entry }}: {{ warn.reason }}</p>
+                  }
+                </td>
+                <td class="text-xs font-mono">
+                  {{ warning.originalData | json }}
+                </td>
+              </tr>
+            </ng-template>
+          </p-table>
+        }
       </p-dialog>
       }
     </div>
@@ -195,15 +256,24 @@ import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
 })
 export default class BulkImportPage {
   private readonly data = inject(BulkImportData);
+  private readonly productTypeApi = inject(ProductTypeApi);
 
   protected readonly selectedFile = signal<File | null>(null);
   protected readonly isImporting = this.data.isImporting;
   protected readonly currentProcess = this.data.currentProcess;
   protected readonly history = this.data.history;
   protected readonly errors = this.data.errors;
+  protected readonly warnings = this.data.warnings;
   
   private readonly _showErrorsDialog = signal<boolean>(false);
   protected readonly showErrorsDialog = this._showErrorsDialog.asReadonly();
+
+  private readonly _activeTab = signal<'errors' | 'warnings'>('errors');
+  protected readonly activeTab = this._activeTab.asReadonly();
+
+  protected setActiveTab(tab: 'errors' | 'warnings'): void {
+    this._activeTab.set(tab);
+  }
 
   constructor() {
     this.data.loadHistory();
@@ -211,8 +281,11 @@ export default class BulkImportPage {
     effect(() => {
       const process = this.currentProcess();
       if (process && (process.status === 'completed' || process.status === 'failed' || process.status === 'partial')) {
-        if (process.errorItems > 0) {
+        // Show dialog if there are errors OR warnings
+        if (process.errorItems > 0 || this.warnings().length > 0) {
           this._showErrorsDialog.set(true);
+          // Load process details including warnings
+          this.data.loadProcessDetails(process.id || process._id || '');
         }
       }
     });
@@ -286,7 +359,23 @@ export default class BulkImportPage {
   }
 
   viewErrors(processId: string): void {
-    this.data.loadErrors(processId);
+    this.data.loadProcessDetails(processId);
     this._showErrorsDialog.set(true);
+  }
+
+  downloadDetails(): void {
+    const process = this.currentProcess();
+    if (process) {
+      const processId = process.id || process._id || '';
+      this.data.downloadDetailsCsv(processId);
+    }
+  }
+
+  downloadOriginalFile(processId: string): void {
+    this.data.downloadOriginalFile(processId);
+  }
+
+  downloadGeneralTemplate(): void {
+    this.productTypeApi.downloadGeneralTemplate();
   }
 }

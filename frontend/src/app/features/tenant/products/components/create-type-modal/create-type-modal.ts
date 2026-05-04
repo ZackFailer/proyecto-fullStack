@@ -216,6 +216,7 @@ export class CreateProductTypeModal {
       type: attr.type,
       required: attr.required,
       options: this.normalizeOptions(attr.options, attr.type),
+      csvColumn: undefined,
     }));
 
     this.submitted.emit({

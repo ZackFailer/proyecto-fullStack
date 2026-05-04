@@ -42,6 +42,11 @@ export interface IItemProcessError {
   code: string;
 }
 
+export interface IItemProcessWarning {
+  entry: string;
+  reason: string;
+}
+
 export interface IItemProcessLog {
   id: string;
   processId: string;
@@ -50,6 +55,7 @@ export interface IItemProcessLog {
   action?: 'created' | 'updated' | 'reactivated' | 'deactivated' | 'deleted' | 'error';
   originalData: Record<string, string>;
   errors: IItemProcessError[];
+  warnings: IItemProcessWarning[];
   processedAt: string;
   productId?: string;
   retryAttempt?: number;
@@ -100,6 +106,14 @@ export class BulkImportApi {
 
   getProcessErrors(processId: string): Observable<IApiResponse<IItemProcessLog[]>> {
     return this.http.get<IApiResponse<IItemProcessLog[]>>(`${this.apiUrl}/${processId}/errors`);
+  }
+
+  getProcessDetailsWithWarnings(processId: string): Observable<IApiResponse<IItemProcessLog[]>> {
+    return this.http.get<IApiResponse<IItemProcessLog[]>>(`${this.apiUrl}/${processId}/details`);
+  }
+
+  downloadOriginalFile(processId: string): Observable<Blob> {
+    return this.http.get(`/api/bulk-process/${processId}/file`, { responseType: 'blob' });
   }
 
   pollProcessStatus(processId: string, intervalMs: number = 2000): Observable<IBulkProcess> {
