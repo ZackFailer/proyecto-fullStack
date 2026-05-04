@@ -5,7 +5,7 @@ import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
-import { ISelectFilter } from '../../../features/products/services/product-data';
+import { ISelectFilter } from '../../../features/tenant/products/services/product-list/product-data';
 
 @Component({
   selector: 'app-table-filter',

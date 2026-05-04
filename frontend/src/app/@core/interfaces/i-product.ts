@@ -1,8 +1,19 @@
 export interface IProduct {
-  id: number;
+  id: string | number;
+  _id?: string;
+  tenantId?: string;
+  productTypeId?: string;
+  productTypeVersion?: number;
+  sku?: string;
+  ean?: string;
   name: string;
-  category: string;
+  description?: string;
   price: number;
   stock: number;
-  img: string;
+  category: string;
+  status?: 'active' | 'inactive';
+  img?: string;
+  customAttributes?: Record<string, unknown>;
+  createdAt?: string;
+  updatedAt?: string;
 }

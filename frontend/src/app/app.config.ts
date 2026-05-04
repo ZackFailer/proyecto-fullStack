@@ -2,16 +2,18 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
+import { MessageService } from 'primeng/api';
 import Aura from '@primeuix/themes/aura';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './@core/interceptor/auth-interceptor';
+import { authRefreshInterceptor } from './@core/interceptor/auth-refresh.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideHttpClient(
-      withInterceptors([authInterceptor]),
+      withInterceptors([authInterceptor, authRefreshInterceptor]),
       withFetch(),
     ),
     provideRouter(routes),
@@ -20,6 +22,7 @@ export const appConfig: ApplicationConfig = {
         preset: Aura
       },
       ripple: true,
-    })
+    }),
+    MessageService
   ]
 };

@@ -50,3 +50,10 @@ backend/.env
 # System files
 /frontend/.DS_Store
 /frontend/Thumbs.db
+
+# Build artifacts
+*.map
+
+# Package locks (personal project)
+package-lock.json
+yarn.lock

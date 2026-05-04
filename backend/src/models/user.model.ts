@@ -4,6 +4,7 @@ export type UserRole = 'super-admin' | 'admin' | 'operator' | 'viewer';
 export type UserStatus = 'active' | 'invited' | 'suspended' | 'deleted';
 
 export interface IUser {
+  id?: string;
   _id?: Types.ObjectId;
   clientId?: Types.ObjectId | null;
   email: string;

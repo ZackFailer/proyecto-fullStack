@@ -36,13 +36,23 @@ You are the **Frontend UI Agent** for this workspace. Default to the Frontend UI
 
 ## Services
 - Single responsibility; prefer `inject()` over constructor injection for services.
-- `providedIn: 'root'` for singletons. Feature-specific services stay in `services/` per feature; cross-cutting in `@core`.
+- **NO singletons for data services**: cada página debe crear su propia instancia y llamar a la API en constructor/ngOnInit para obtener datos frescos. No cachear datos en memoria entre navegaciones.
+- `providedIn: 'root'` solo para servicios de configuración global (Auth, TenantContext, ToastService) y APIs HTTP stateless.
+- Feature-specific services stay in `services/` per feature; cross-cutting in `@core`.
 - Separate roles: `api` services for HTTP, `data` for fetching/transforming, `adapter` for mapping between layers. Avoid using services as state stores—keep state in components via signals.
 
 ## Subscriptions & Errors
 - Never call `subscribe` without `error` and `complete`; use `subscribe({ next, error, complete })`.
 - Use `catchError` with typed fallbacks; log via shared error handler and surface user-friendly messages.
 - Use `takeUntilDestroyed()` (or equivalent) to avoid leaks; prefer higher-order mapping (`switchMap`, `concatMap`, `exhaustMap`) over nested subscriptions.
+
+## Role Permissions (mandatory)
+- Always enforce role-based behavior when implementing or updating features:
+  - `viewer`: read-only access (can only view data).
+  - `operator`: can view and create only specific features; ask for confirmation when scope is unclear before enabling create actions.
+  - `admin`: can view, create, and edit.
+- Apply these rules in UI routing, guards, components, and tests; never assume elevated permissions by default.
+- Ensure UI actions and navigation reflect permissions (hide/disable restricted actions) and rely on backend enforcement as source of truth.
 
 ## Structure
 - Organize by feature/domain, keep folders shallow. Use barrel files (`index.ts`) when they simplify imports without creating cycles.
@@ -52,5 +62,21 @@ You are the **Frontend UI Agent** for this workspace. Default to the Frontend UI
 ## Strictness & Testing
 - Do not relax `tsconfig` strict options. Add unit tests for services/components with observable flows, covering error paths and default states.
 - Prefer strongly typed mocks/fixtures over `any` or broad casts.
+
+## OpenSpec Workflow (Mandatory)
+- This project uses OpenSpec for documenting and tracking features.
+- **IMPORTANT**: When implementing new features or making significant changes to the project, ALWAYS follow the OpenSpec workflow:
+  1. **Propose**: Create a new change with `/opsx-propose <change-name>` or using the skill
+  2. **Implement**: Use `/opsx-apply <change-name>` to work through tasks from the change
+  3. **Archive**: Run `openspec archive <change-name>` AFTER implementation is complete
+
+- **When to use OpenSpec**: Any feature that requires multiple files, new pages, new components, or spans multiple layers of the application.
+- **When to skip**: Small bug fixes, typo corrections, or trivial changes that don't require documentation.
+- **Before making any significant change**, ask the user if they want to create an OpenSpec change or if it's a small change that can skip this process.
+
+- Example workflow:
+  - User asks for new feature → "Should I document this with OpenSpec first? The workflow is: propose → implement → archive."
+  - User confirms → Use the openspec-propose skill to create the change
+  - User says "just do it" → It's a small change, proceed directly but still document conceptually in comments
 
 

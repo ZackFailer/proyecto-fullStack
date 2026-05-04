@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { HeaderAuthLayout } from "../../components/header-auth-layout/header-auth-layout";
 import { SidebarAuthLayout } from "../../components/sidebar-auth-layout/sidebar-auth-layout";
-import { RouterOutlet } from '@angular/router';
+import { ActivatedRoute, RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-layout-auth',
@@ -95,4 +95,12 @@ import { RouterOutlet } from '@angular/router';
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export default class LayoutAuth { }
+export default class LayoutAuth {
+  
+
+  constructor() {
+    
+  }
+
+  
+}

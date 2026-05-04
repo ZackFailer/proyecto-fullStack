@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, Signal, signal } from '@angular/core';
 import { PanelMenu } from 'primeng/panelmenu';
 import { MenuItem } from 'primeng/api';
 import { LayoutAdminData } from '../../services/layout-admin-data';
@@ -8,7 +8,7 @@ import { LayoutAdminData } from '../../services/layout-admin-data';
   imports: [PanelMenu],
   template: `
     <div class="card flex justify-center">
-      <p-panelmenu [model]="items" class="w-full md:w-80" />
+      <p-panelmenu [model]="items()" class="w-full md:w-80" />
     </div>
   `,
   styles: `
@@ -21,6 +21,6 @@ import { LayoutAdminData } from '../../services/layout-admin-data';
 export class SidebarAuthLayout {
   private readonly layoutAdminData = inject(LayoutAdminData);
 
-  items: MenuItem[] = this.layoutAdminData.items;
+  items = this.layoutAdminData.itemSidebar;
 
 }

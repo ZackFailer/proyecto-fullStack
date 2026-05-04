@@ -3,6 +3,7 @@ import { tap } from 'rxjs/operators';
 import { ICredentials } from '../../interfaces/i-credentials';
 import { AuthApi, LoginResponse } from './auth-api';
 import { Router } from '@angular/router';
+import { TenantContext } from '../tenant/tenant-context';
 
 export interface AuthUser {
   id: string;
@@ -18,6 +19,7 @@ export class Auth {
   private readonly authApi = inject(AuthApi);
   private readonly userKey = 'auth_user';
   private readonly router = inject(Router);
+  private readonly tenantContext = inject(TenantContext);
 
   private user = signal<AuthUser | null>(null);
 
@@ -42,8 +44,36 @@ export class Auth {
     sessionStorage.removeItem(this.userKey);
   }
 
+  public logout(): void {
+    this.authApi.logout().subscribe({
+      next: () => {
+        // Backend logout successful
+        this.performLocalLogout();
+      },
+      error: () => {
+        // Fallback: if backend logout fails, still clear local session
+        this.performLocalLogout();
+      }
+    });
+  }
+
+  private performLocalLogout(): void {
+    this.clearSession();
+    this.tenantContext.clear();
+    this.router.navigate(['/login']);
+  }
+
   public isAuthenticated():boolean {
     return !!this.user();
+  }
+
+  public currentUser() {
+    return this.user();
+  }
+
+  public updateUser(user: AuthUser): void {
+    this.user.set(user);
+    sessionStorage.setItem(this.userKey, JSON.stringify(user));
   }
 
   private loadFromStorage() {
@@ -55,6 +85,10 @@ export class Auth {
         this.user.set(null);
       }
     }
+  }
+
+  isSuperAdmin(): boolean {
+    return this.user()?.role === 'super-admin';
   }
 
 }

@@ -44,6 +44,30 @@ You are the **Backend API Agent** for this workspace. Default to the Backend API
 - Validate JWTs in middleware; set `req.user` with a typed payload. Reject missing/invalid tokens with consistent 401/403 responses.
 - For cookies/tokens, set `httpOnly`, `sameSite`, and `secure` (in production); never expose secrets in responses.
 
+## Role Permissions (mandatory)
+- Always enforce role-based behavior when implementing or updating features:
+  - `viewer`: read-only access (can only view data).
+  - `operator`: can view and create only specific features; ask for confirmation when scope is unclear before enabling create actions.
+  - `admin`: can view, create, and edit.
+- Apply these rules in routers/controllers/services and tests; never assume elevated permissions by default.
+- Return consistent `403` responses when a role attempts an action outside its permissions.
+
 ## Testing & Logging
 - Favor integration tests for routers/controllers using the standardized envelope; unit test services with mocked models.
 - Use consistent logging (e.g., `morgan` for HTTP, structured logs for errors); avoid `console.log` in production paths.
+
+## OpenSpec Workflow (Mandatory)
+- This project uses OpenSpec for documenting and tracking features.
+- **IMPORTANT**: When implementing new features or making significant changes to the project, ALWAYS follow the OpenSpec workflow:
+  1. **Propose**: Create a new change with `/opsx-propose <change-name>` or using the skill
+  2. **Implement**: Use `/opsx-apply <change-name>` to work through tasks from the change
+  3. **Archive**: Run `openspec archive <change-name>` AFTER implementation is complete
+
+- **When to use OpenSpec**: Any feature that requires multiple files, new endpoints, new models, or spans multiple layers of the application.
+- **When to skip**: Small bug fixes, typo corrections, or trivial changes that don't require documentation.
+- **Before making any significant change**, ask the user if they want to create an OpenSpec change or if it's a small change that can skip this process.
+
+- Example workflow:
+  - User asks for new feature → "Should I document this with OpenSpec first? The workflow is: propose → implement → archive."
+  - User confirms → Use the openspec-propose skill to create the change
+  - User says "just do it" → It's a small change, proceed directly but still document conceptually in comments

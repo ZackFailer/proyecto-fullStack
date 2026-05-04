@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { TableModule } from 'primeng/table';
 import { Button } from "primeng/button";
 
 export interface ITableColumn {
   field: string;
   header: string;
+  type?: 'image' | 'currency' | 'number' | 'date' | 'boolean';
 }
 
 export interface ITableConfig<T> {
@@ -25,6 +26,9 @@ export interface ITableConfig<T> {
       [rows]="tableConfig().rows || 5"
       [globalFilterFields]="tableConfig().columns.map(col => col.field)"
       [tableStyle]="{ 'min-width': '50rem' }"
+      [selectionMode]="'single'"
+      dataKey="sku"
+      (onRowSelect)="onRowSelect.emit($event.data)"
       >
       <ng-template pTemplate="header" let-columns>
         <tr style="font-family: Arial, sans-serif; font-size: 14px; color: #333; text-align: left;">
@@ -56,7 +60,7 @@ export interface ITableConfig<T> {
           @if(tableConfig().showActions) {
             <td>
               <div class="flex justify-center">
-                <p-button icon="pi pi-search" size="small" rounded severity="secondary" ></p-button>
+                <p-button icon="pi pi-search" size="small" rounded severity="secondary" (onClick)="onRowSelect.emit(rowData)"></p-button>
               </div>
             </td>
           }
@@ -82,5 +86,6 @@ export interface ITableConfig<T> {
 export class SingleTable<T> {
 
   public tableConfig = input.required<ITableConfig<T>>();
-  
+  public onRowSelect = output<any>();
+
 }

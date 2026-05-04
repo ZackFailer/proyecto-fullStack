@@ -5,8 +5,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "concurrently \"npm run dev --workspace=backend\" \"npm run start --workspace=frontend\"",
-    "dev:frontend": "ng serve",
-    "dev:backend": "nodemon backend/src/index.js"
+    "dev:frontend": "npm run start --workspace=frontend",
+    "dev:backend": "tsx watch backend/src/index.ts"
   },
   "keywords": [],
   "author": "",

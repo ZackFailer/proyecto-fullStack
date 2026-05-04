@@ -73,8 +73,48 @@ const toObjectIdOrNull = (value?: string | null): Types.ObjectId | null | undefi
 };
 
 const sanitizeUser = (user: IUser): IUser => {
-  const { passwordHash, ...rest } = user;
-  return rest as IUser;
+  const userRecord = user as unknown as Record<string, unknown>;
+  const sanitized: Record<string, unknown> = { ...userRecord };
+
+  const rawId = sanitized.id ?? sanitized._id;
+  if (rawId !== undefined && rawId !== null) {
+    sanitized.id = typeof rawId === 'string' ? rawId : String(rawId);
+  }
+
+  delete sanitized._id;
+  delete sanitized.passwordHash;
+
+  return sanitized as unknown as IUser;
+};
+
+const enrichWithUpdatedByName = async (user: IUser): Promise<IUser & { updatedByName: string | null }> => {
+  const userRecord = user as unknown as Record<string, unknown>;
+  const updatedByValue = userRecord.updatedBy;
+
+  if (!updatedByValue) {
+    return { ...user, updatedByName: null };
+  }
+
+  if (typeof updatedByValue === 'object' && updatedByValue !== null) {
+    const populated = updatedByValue as Record<string, unknown>;
+    if (typeof populated.fullName === 'string' && populated.fullName.trim().length > 0) {
+      return { ...user, updatedByName: populated.fullName };
+    }
+
+    const nestedId = populated._id;
+    if (typeof nestedId === 'string' && isValidObjectId(nestedId)) {
+      const modifier = await User.findById(nestedId).select('fullName').lean();
+      return { ...user, updatedByName: modifier?.fullName ?? null };
+    }
+  }
+
+  const updatedById = String(updatedByValue);
+  if (!isValidObjectId(updatedById)) {
+    return { ...user, updatedByName: null };
+  }
+
+  const modifier = await User.findById(updatedById).select('fullName').lean();
+  return { ...user, updatedByName: modifier?.fullName ?? null };
 };
 
 const ensureAnotherAdminExists = async (clientId: Types.ObjectId | null, excludeUserId: string) => {
@@ -127,7 +167,12 @@ export const createUser = async (payload: CreateUserInput): Promise<IUser> => {
   return sanitizeUser(saved.toJSON() as IUser);
 };
 
-export const listUsers = async (filters: ListUsersFilters): Promise<ListUsersResult> => {
+export const listUsers = async (filters: ListUsersFilters): Promise<{
+  items: (IUser & { updatedByName: string | null })[];
+  page: number;
+  limit: number;
+  total: number;
+}> => {
   const page = Math.max(1, Number(filters.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(filters.limit) || 20));
   const query: Record<string, unknown> = { deletedAt: null };
@@ -149,19 +194,31 @@ export const listUsers = async (filters: ListUsersFilters): Promise<ListUsersRes
 
   const skip = (page - 1) * limit;
   const [items, total] = await Promise.all([
-    User.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    User.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('updatedBy', 'fullName')
+      .lean(),
     User.countDocuments(query),
   ]);
 
+  const sanitizedItems = await Promise.all(
+    items.map(async (u) => {
+      const sanitized = sanitizeUser(u as IUser);
+      return enrichWithUpdatedByName(sanitized);
+    })
+  );
+
   return {
-    items: items.map((u) => sanitizeUser(u as IUser)),
+    items: sanitizedItems,
     page,
     limit,
     total,
   };
 };
 
-export const getUserById = async (id: string, clientId?: string | null): Promise<IUser | null> => {
+export const getUserById = async (id: string, clientId?: string | null): Promise<(IUser & { updatedByName: string | null }) | null> => {
   if (!isValidObjectId(id)) {
     throw buildError(400, 'INVALID_ID', 'ID inválido');
   }
@@ -172,16 +229,18 @@ export const getUserById = async (id: string, clientId?: string | null): Promise
     query.clientId = clientFilter;
   }
 
-  const user = await User.findOne(query).lean();
+  const user = await User.findOne(query).populate('updatedBy', 'fullName').lean();
   if (!user) return null;
-  return sanitizeUser(user as IUser);
+
+  const sanitized = sanitizeUser(user as IUser);
+  return enrichWithUpdatedByName(sanitized);
 };
 
 export const updateUser = async (
   id: string,
   updates: UpdateUserInput,
   clientId?: string | null
-): Promise<IUser | null> => {
+): Promise<(IUser & { updatedByName: string | null }) | null> => {
   if (!isValidObjectId(id)) {
     throw buildError(400, 'INVALID_ID', 'ID inválido');
   }
@@ -219,9 +278,13 @@ export const updateUser = async (
     await ensureAnotherAdminExists(targetClientId, id);
   }
 
-  const updated = await User.findOneAndUpdate(query, updatePayload, { new: true }).lean();
+  const updated = await User.findOneAndUpdate(query, updatePayload, { new: true })
+    .populate('updatedBy', 'fullName')
+    .lean();
   if (!updated) return null;
-  return sanitizeUser(updated as IUser);
+
+  const sanitized = sanitizeUser(updated as IUser);
+  return enrichWithUpdatedByName(sanitized);
 };
 
 export const softDeleteUser = async (id: string, clientId?: string | null): Promise<boolean> => {
@@ -243,4 +306,62 @@ export const softDeleteUser = async (id: string, clientId?: string | null): Prom
   const result = await User.findOneAndUpdate(query, { status: 'deleted', deletedAt: new Date() }, { new: true }).lean();
 
   return Boolean(result);
+};
+
+/**
+ * Changes a user's password (privileged operation - bypasses self-auth).
+ * - Admin role: can only change operator/viewer passwords (must provide adminPassword)
+ * - Super-admin role: can change any role password (no adminPassword needed)
+ */
+export const changeUserPassword = async (
+  targetId: string,
+  newPassword: string,
+  options?: {
+    clientId?: string | null;
+    actorRole: UserRole;
+    actorPassword?: string; // Required when actor is admin
+  }
+): Promise<void> => {
+  if (!isValidObjectId(targetId)) {
+    throw buildError(400, 'INVALID_ID', 'ID inválido');
+  }
+
+  const query: Record<string, unknown> = { _id: targetId, deletedAt: null };
+  const clientFilter = toObjectIdOrNull(options?.clientId);
+  if (clientFilter !== undefined) {
+    query.clientId = clientFilter;
+  }
+
+  const target = await User.findOne(query).lean();
+  if (!target) {
+    throw buildError(404, 'USER_NOT_FOUND', 'Usuario no encontrado');
+  }
+
+  // Validate actor role permissions
+  const actorRole = options?.actorRole;
+
+  if (actorRole === 'admin') {
+    // Admin can only change operator or viewer
+    if (target.role !== 'operator' && target.role !== 'viewer') {
+      throw buildError(403, 'FORBIDDEN', 'El rol admin no puede cambiar la contraseña de este usuario');
+    }
+  } else if (actorRole === 'super-admin') {
+    // Super-admin can change any role - allowed
+  } else {
+    // Operator, viewer cannot use this endpoint
+    throw buildError(403, 'FORBIDDEN', 'No tienes permisos para cambiar la contraseña de este usuario');
+  }
+
+  // For admin role: verify their current password
+  if (actorRole === 'admin') {
+    if (!options?.actorPassword) {
+      throw buildError(400, 'ADMIN_PASSWORD_REQUIRED', 'La contraseña del admin es requerida');
+    }
+    // Actor password needs to be verified by the caller, not here
+    // This is because actor info is not in this service (keeps it decoupled)
+  }
+
+  // Update password hash
+  const newPasswordHash = await hashPassword(newPassword);
+  await User.findByIdAndUpdate(targetId, { passwordHash: newPasswordHash });
 };

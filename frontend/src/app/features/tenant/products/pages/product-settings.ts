@@ -1,0 +1,95 @@
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { CardModule } from 'primeng/card';
+import { DividerModule } from 'primeng/divider';
+import { ButtonModule } from 'primeng/button';
+import { CreateProductTypeModal, ProductSettingsToolbar, ProductTypeList, ProductAttributes, ProductGuardrails } from '../components/product-settings';
+import { ProductSettingsData } from '../services/product-settings-data';
+import { ProductTypeApi } from '../services/product-type-api';
+import { INewProductTypeWithAttributes } from '../interfaces/product-settings';
+import { Auth } from '../../../../@core/services/auth/auth';
+
+@Component({
+  selector: 'app-product-settings',
+  imports: [CardModule, DividerModule, ButtonModule, ProductSettingsToolbar, ProductTypeList, ProductAttributes, ProductGuardrails, CreateProductTypeModal],
+  template: `
+    <div class="grid gap-4">
+      <app-product-settings-toolbar [metrics]="metrics()" [userRole]="userRole()" (createRequested)="openCreateModal()" />
+
+      <p-card styleClass="shadow-1 border border-surface-200">
+        <div class="grid gap-4 lg:grid-cols-[1fr_1fr]">
+          <div class="space-y-3">
+            <p class="text-sm font-semibold text-surface-900">Tipos de producto</p>
+            <app-product-type-list [types]="types()" [selectedId]="selectedTypeId()" (selectType)="onSelectType($event)" />
+          </div>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-sm font-semibold text-surface-900">Atributos</p>
+              <p-button label="Descargar Excel" icon="pi pi-download" styleClass="p-button-text p-button-sm" (onClick)="downloadTemplate()" />
+            </div>
+            <app-product-attributes [productType]="selectedType()" />
+          </div>
+        </div>
+      </p-card>
+
+      <app-product-guardrails [guardrails]="guardrails()" />
+
+      <app-create-product-type-modal
+        [visible]="isCreateOpen()"
+        (closed)="closeCreateModal()"
+        (submitted)="handleCreateType($event)"
+      />
+    </div>
+  `,
+  styles: `
+    :host { display: block; }
+  `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export default class ProductSettingsPage {
+  private readonly data = inject(ProductSettingsData);
+  private readonly api = inject(ProductTypeApi);
+  private readonly auth = inject(Auth);
+
+  protected readonly types = this.data.productTypes;
+  protected readonly guardrails = this.data.guardrails;
+  protected readonly metrics = this.data.metrics;
+  protected readonly userRole = computed(() => this.auth.currentUser()?.role ?? 'viewer' as const);
+
+  protected readonly selectedTypeId = signal<string>('');
+  protected readonly selectedType = computed(() => {
+    const id = this.selectedTypeId();
+    if (!id) {
+      const types = this.types();
+      return types.length > 0 ? types[0] : null;
+    }
+    return this.types().find(t => t.id === id) ?? null;
+  });
+
+  readonly isCreateOpen = signal<boolean>(false);
+
+  protected onSelectType(id: string) {
+    this.selectedTypeId.set(id);
+  }
+
+  protected openCreateModal() {
+    this.isCreateOpen.set(true);
+  }
+
+  protected closeCreateModal() {
+    this.isCreateOpen.set(false);
+  }
+
+  protected handleCreateType(payload: INewProductTypeWithAttributes) {
+    this.data.addProductType(payload);
+    this.closeCreateModal();
+  }
+
+  protected downloadTemplate() {
+    const type = this.selectedType();
+    if (!type) {
+      return;
+    }
+
+    this.api.downloadTemplate(type.id, 'xlsx');
+  }
+}
