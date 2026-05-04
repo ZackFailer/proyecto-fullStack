@@ -1,23 +1,29 @@
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, OnInit, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { distinctUntilChanged, map } from 'rxjs';
+import { FormsModule } from '@angular/forms';
 import { Button } from 'primeng/button';
 import { Card } from 'primeng/card';
 import { Tag } from 'primeng/tag';
+import { Select } from 'primeng/select';
 import { ProductDetailData } from '../../inventory/services/product-detail-data';
 import { TransferModal } from '../../inventory/components/transfer-modal/transfer-modal';
 import { Auth, AuthUser } from '../../../../@core/services/auth/auth';
+import { IRelatedProductEntry, IProduct } from '../../../../@core/interfaces/i-product';
+import { ProductTypeApi, IProductType } from '../../products/services/product-type-api';
 
 @Component({
   selector: 'app-product-detail',
   imports: [
     CommonModule,
+    FormsModule,
     Button,
     Card,
     Tag,
     DecimalPipe,
+    Select,
     TransferModal,
   ],
   template: `
@@ -121,16 +127,63 @@ import { Auth, AuthUser } from '../../../../@core/services/auth/auth';
           }
         </p-card>
 
-        @if (canViewRelated()) {
+@if (canViewRelated()) {
           <p-card styleClass="shadow-1 border border-surface-200">
             <div class="mb-3 flex items-center justify-between">
               <span class="font-semibold">Productos relacionados</span>
-              <span class="text-xs text-surface-500">{{ relatedProducts().length }} vinculados</span>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-surface-500">{{ relatedProducts().length }} vinculados</span>
+                @if (canEditRelated()) {
+                  @if (isEditingRelations()) {
+                    <p-button label="Cancelar" styleClass="p-button-text p-button-sm" (onClick)="cancelEditRelations()" />
+                    <p-button label="Guardar" styleClass="p-button-success p-button-sm" [loading]="savingRelations()" (onClick)="saveRelations()" />
+                  } @else {
+                    <p-button label="Editar relaciones" icon="pi pi-pencil" styleClass="p-button-text p-button-sm" (onClick)="startEditRelations()" />
+                  }
+                }
+              </div>
             </div>
 
-            @if (relatedProducts().length === 0) {
-              <div class="rounded-md border border-dashed border-surface-300 p-4 text-sm text-surface-500">
-                Este producto no tiene SKU relacionados.
+            @if (isEditingRelations()) {
+              <!-- Edit mode -->
+              <div class="space-y-3">
+                @for (relation of editingRelations(); track $index; let i = $index) {
+                  <div class="flex items-center gap-2 rounded-md border border-surface-300 p-3">
+                    <p-select
+                      [options]="availableProducts()"
+                      [(ngModel)]="relation.sku"
+                      optionLabel="displayLabel"
+                      optionValue="sku"
+                      placeholder="Seleccionar SKU"
+                      [filter]="true"
+                      filterBy="displayLabel"
+                      styleClass="flex-1"
+                    >
+                      <ng-template let-product pTemplate="item">
+                        <div class="flex flex-col">
+                          <span class="font-mono text-sm">{{ product.sku }}</span>
+                          <span class="text-xs text-surface-500">{{ product.name }}</span>
+                          @if (product.conversionText) {
+                            <span class="text-xs text-primary">{{ product.conversionText }}</span>
+                          }
+                        </div>
+                      </ng-template>
+                    </p-select>
+
+                    <p-select
+                      [options]="relationTypes"
+                      [(ngModel)]="relation.type"
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Tipo"
+                      styleClass="w-40"
+                    />
+
+                    <p-button icon="pi pi-trash" styleClass="p-button-text p-button-danger" (onClick)="removeRelation(i)" />
+                  </div>
+                }
+
+                <p-button label="Agregar relación" icon="pi pi-plus" styleClass="p-button-outlined p-button-sm" (onClick)="addRelation()" [disabled]="savingRelations()" />
               </div>
             } @else {
               <div class="flex flex-col gap-2">
@@ -165,11 +218,41 @@ import { Auth, AuthUser } from '../../../../@core/services/auth/auth';
             </div>
           </p-card>
         }
+
+        <p-card styleClass="shadow-1 border border-surface-200">
+          <div class="mb-3 flex items-center justify-between">
+            <span class="font-semibold">Timeline de movimientos</span>
+            <span class="text-xs text-surface-500">{{ timeline().length }} eventos</span>
+          </div>
+
+          @if (timeline().length === 0) {
+            <div class="rounded-md border border-dashed border-surface-300 p-4 text-sm text-surface-500">
+              Sin movimientos registrados para este producto.
+            </div>
+          } @else {
+            <div class="flex flex-col gap-2">
+              @for (event of timeline(); track event.id) {
+                <div class="rounded-md border border-surface-200 p-3">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="rounded-full bg-surface-100 px-2 py-1 text-xs text-surface-700">{{ event.type }}</span>
+                      <span class="text-sm font-semibold">{{ event.action }}</span>
+                    </div>
+                    <span class="text-xs text-surface-500">{{ event.createdAt | date:'medium' }}</span>
+                  </div>
+
+                  <pre class="mt-2 overflow-x-auto rounded bg-surface-50 p-2 text-xs text-surface-700">{{ event.payload | json }}</pre>
+                </div>
+              }
+            </div>
+          }
+        </p-card>
       }
 
       <app-transfer-modal
         #transferModal
         [products]="products()"
+        [candidateProducts]="relatedProducts().map(r => ({ sku: r.sku, name: r.name }))"
         [currentSKU]="product()?.sku ?? ''"
         [currentStock]="product()?.stock ?? 0"
         (refreshNeeded)="refreshProduct()"
@@ -190,16 +273,63 @@ export class ProductDetail implements OnInit {
   private readonly auth = inject(Auth);
   private readonly destroyRef = inject(DestroyRef);
 
-  constructor() {
-    this.data.loadProducts();
-  }
-
   readonly loading = this.data.loading;
   readonly error = this.data.error;
   readonly product = this.data.product;
   readonly products = this.data.products;
   readonly relatedProducts = this.data.relatedProducts;
+  readonly timeline = this.data.timeline;
   readonly transferModal = viewChild<TransferModal>('transferModal');
+
+  // Relationship editing state
+  private readonly _isEditingRelations = signal(false);
+  private readonly _editingRelations = signal<IRelatedProductEntry[]>([]);
+  private readonly _savingRelations = signal(false);
+  private readonly _availableProducts = signal<{ sku: string; name: string; displayLabel: string; conversionText: string }[]>([]);
+
+  private readonly productTypeApi = inject(ProductTypeApi);
+  private readonly _productTypes = signal<IProductType[]>([]);
+
+  readonly isEditingRelations = this._isEditingRelations.asReadonly();
+  readonly editingRelations = this._editingRelations.asReadonly();
+  readonly savingRelations = this._savingRelations.asReadonly();
+  readonly availableProducts = this._availableProducts.asReadonly();
+
+  private readonly computeProductDisplay = (product: IProduct): { sku: string; name: string; displayLabel: string; conversionText: string } => {
+    const sku = product.sku ?? '';
+    const name = product.name ?? '';
+    const displayLabel = `${sku} - ${name}`;
+    const conversionText = '';
+
+    if (!product.productTypeId) {
+      return { sku, name, displayLabel, conversionText };
+    }
+
+    const productTypes = this._productTypes();
+    const productType = productTypes.find(t => t.id === product.productTypeId);
+    if (!productType?.conversionAttribute || !product.customAttributes) {
+      return { sku, name, displayLabel, conversionText };
+    }
+
+    const attrKey = productType.conversionAttribute;
+    const attrDef = productType.attributes.find(a => a.key === attrKey);
+    const attrValue = product.customAttributes[attrKey];
+
+    if (attrDef && attrValue !== undefined && typeof attrValue === 'number') {
+      const label = attrDef.label;
+      const fullLabel = `${sku} - ${name} (${label}: ${attrValue})`;
+      return { sku, name, displayLabel: fullLabel, conversionText: `${label}: ${attrValue}` };
+    }
+
+    return { sku, name, displayLabel, conversionText };
+  };
+
+  readonly relationTypes = [
+    { label: 'Derivado de', value: 'derived-from' },
+    { label: 'Componente de', value: 'component-of' },
+    { label: 'Variante de', value: 'variant-of' },
+    { label: 'Relacionado', value: 'related' },
+  ];
 
   readonly role = computed<AuthUser['role']>(() => this.auth.currentUser()?.role ?? 'viewer');
   readonly canTransfer = computed(() => {
@@ -210,6 +340,39 @@ export class ProductDetail implements OnInit {
     const currentRole = this.role();
     return currentRole === 'admin' || currentRole === 'operator' || currentRole === 'super-admin';
   });
+  readonly canEditRelated = computed(() => {
+    const currentRole = this.role();
+    return currentRole === 'admin' || currentRole === 'super-admin';
+  });
+
+  constructor() {
+    // Effect to load product types and build enriched options when entering edit mode
+    effect(() => {
+      if (this._isEditingRelations()) {
+        // Load product types for conversion attribute metadata
+        this.productTypeApi.getProductTypes().subscribe({
+          next: (response) => {
+            if (response.success && response.data) {
+              this._productTypes.set(response.data);
+            }
+          },
+          error: () => {
+            this._productTypes.set([]);
+          },
+          complete: () => {},
+        });
+
+        const products = this.data.products();
+        const currentSku = this.product()?.sku;
+        if (products.length > 0) {
+          const filteredProducts = products
+            .filter((p: IProduct) => p.sku !== currentSku)
+            .map((p: IProduct) => this.computeProductDisplay(p));
+          this._availableProducts.set(filteredProducts);
+        }
+      }
+    });
+  }
 
   readonly dynamicAttributes = computed(() => {
     const attributes = this.product()?.customAttributes;
@@ -238,10 +401,6 @@ export class ProductDetail implements OnInit {
           }
 
           this.data.loadProduct(sku, this.canViewRelated());
-
-          if (this.canTransfer()) {
-            this.data.loadProducts();
-          }
         },
         error: () => {},
         complete: () => {},
@@ -320,10 +479,75 @@ export class ProductDetail implements OnInit {
     const sku = this.product()?.sku;
     if (sku) {
       this.data.loadProduct(sku, this.canViewRelated());
+    }
+  }
 
-      if (this.canTransfer()) {
-        this.data.loadProducts();
+  startEditRelations(): void {
+    // Lazy-load products only when entering edit mode
+    this.data.loadProducts();
+
+    // Initialize editing relations from current product's relatedProducts
+    const currentRelations = this.product()?.relatedProducts || [];
+    this._editingRelations.set([...currentRelations]);
+
+    // If empty, add one empty row
+    if (this._editingRelations().length === 0) {
+      this._editingRelations.set([{ sku: '', type: 'related' }]);
+    }
+
+    this._isEditingRelations.set(true);
+
+    // Use effect to react to products signal changes
+    // This runs when products signal updates after loadProducts() completes
+  }
+
+  cancelEditRelations(): void {
+    this._isEditingRelations.set(false);
+    this._editingRelations.set([]);
+  }
+
+  addRelation(): void {
+    const current = this._editingRelations();
+    this._editingRelations.set([...current, { sku: '', type: 'related' }]);
+  }
+
+  removeRelation(index: number): void {
+    const current = this._editingRelations();
+    const updated = [...current];
+    updated.splice(index, 1);
+    this._editingRelations.set(updated);
+  }
+
+  async saveRelations(): Promise<void> {
+    // Filter out empty SKUs
+    const validRelations = this._editingRelations()
+      .filter(r => r.sku && r.type)
+      .map(r => ({ sku: r.sku, type: r.type as IRelatedProductEntry['type'] }));
+
+    if (validRelations.length === 0) {
+      // If no valid relations, save empty array to clear all
+      this._savingRelations.set(true);
+      try {
+        await this.data.saveRelatedProducts([]);
+        this._isEditingRelations.set(false);
+        this._editingRelations.set([]);
+      } catch {
+        // Error handled in service
+      } finally {
+        this._savingRelations.set(false);
       }
+      return;
+    }
+
+    this._savingRelations.set(true);
+    try {
+      await this.data.saveRelatedProducts(validRelations);
+      this._isEditingRelations.set(false);
+      this._editingRelations.set([]);
+    } catch {
+      // Error handled in service
+    } finally {
+      this._savingRelations.set(false);
     }
   }
 }
