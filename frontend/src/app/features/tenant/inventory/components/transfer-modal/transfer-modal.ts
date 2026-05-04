@@ -11,6 +11,11 @@ import { IProduct } from '../../../../../@core/interfaces/i-product';
 import { ProductDetailData } from '../../services/product-detail-data';
 import { ITransferPreview } from '../../services/inventory-api';
 
+interface ProductCandidate {
+  sku: string;
+  name: string;
+}
+
 @Component({
   selector: 'app-transfer-modal',
   imports: [
@@ -142,6 +147,7 @@ export class TransferModal {
   readonly refreshNeeded = output<void>();
 
   readonly products = input<IProduct[]>([]);
+  readonly candidateProducts = input<ProductCandidate[]>([]);
   readonly currentSKU = input<string>('');
   readonly currentStock = input<number>(0);
 
@@ -175,12 +181,25 @@ export class TransferModal {
   }
 
   open(): void {
-    const list = this.products();
     const sku = this.currentSKU();
 
-    const options = list
-      .filter(p => p.sku !== sku)
-      .map(p => ({ sku: p.sku || '', label: `${p.sku || ''} - ${p.name || ''}` }));
+    // Use candidateProducts if available, otherwise fallback to all products
+    const candidates = this.candidateProducts();
+    const allProducts = this.products();
+
+    let options: { sku: string; label: string }[] = [];
+
+    if (candidates && candidates.length > 0) {
+      // Use related products as candidates
+      options = candidates
+        .filter(p => p.sku !== sku)
+        .map(p => ({ sku: p.sku, label: `${p.sku} - ${p.name}` }));
+    } else if (allProducts && allProducts.length > 0) {
+      // Fallback to all products
+      options = allProducts
+        .filter(p => p.sku !== sku)
+        .map(p => ({ sku: p.sku || '', label: `${p.sku || ''} - ${p.name || ''}` }));
+    }
 
     this.skuOptions.set(options);
     this.transferForm.reset();

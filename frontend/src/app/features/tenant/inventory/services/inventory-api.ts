@@ -71,9 +71,21 @@ export interface ITransferListItem {
     fromValue: number;
     toValue: number;
   };
+  source?: {
+    type: 'manual' | 'rollback';
+    originalTransferId?: string;
+  };
   status: string;
   reason?: string;
   createdAt: string;
+}
+
+export interface IProductTimelineItem {
+  id: string;
+  type: 'transfer' | 'bulk-import';
+  action: string;
+  createdAt: string;
+  payload: Record<string, unknown>;
 }
 
 export interface ITransfersResponse {
@@ -102,13 +114,55 @@ export class InventoryApi {
     return this.http.post<{ success: boolean; message: string; data: ITransferPreview }>(`${this.apiUrl}/transfer/preview`, transfer);
   }
 
-  getTransfers(sku?: string): Observable<ITransfersResponse> {
-    const params = sku ? `?sku=${encodeURIComponent(sku)}` : '';
-    return this.http.get<ITransfersResponse>(`${this.apiUrl}/transfers${params}`);
+  getTransfers(options?: {
+    sku?: string;
+    page?: number;
+    limit?: number;
+    status?: string;
+    fromDate?: string;
+    toDate?: string;
+  }): Observable<ITransfersResponse> {
+    const query = new URLSearchParams();
+
+    if (options?.sku) {
+      query.set('sku', options.sku);
+    }
+
+    if (options?.page) {
+      query.set('page', String(options.page));
+    }
+
+    if (options?.limit) {
+      query.set('limit', String(options.limit));
+    }
+
+    if (options?.status) {
+      query.set('status', options.status);
+    }
+
+    if (options?.fromDate) {
+      query.set('fromDate', options.fromDate);
+    }
+
+    if (options?.toDate) {
+      query.set('toDate', options.toDate);
+    }
+
+    const params = query.toString();
+    const path = params ? `${this.apiUrl}/transfers?${params}` : `${this.apiUrl}/transfers`;
+    return this.http.get<ITransfersResponse>(path);
   }
 
   getRelatedProducts(sku: string): Observable<IRelatedProductsResponse> {
     return this.http.get<IRelatedProductsResponse>(`/api/products/${sku}/related`);
+  }
+
+  getProductTimeline(sku: string, limit: number = 50): Observable<{ success: boolean; message: string; data: IProductTimelineItem[] }> {
+    return this.http.get<{ success: boolean; message: string; data: IProductTimelineItem[] }>(`/api/products/${sku}/timeline?limit=${limit}`);
+  }
+
+  rollbackTransfer(transferId: string, reason?: string): Observable<ITransferResponse> {
+    return this.http.post<ITransferResponse>(`${this.apiUrl}/transfer/${transferId}/rollback`, { reason });
   }
 }
 

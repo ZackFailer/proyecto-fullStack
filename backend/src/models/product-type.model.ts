@@ -10,6 +10,7 @@ export interface IProductAttribute {
   options?: string[]
   defaultValue?: string | number | boolean | null
   order: number
+  csvColumn?: number
   version: number
   isDeprecated: boolean
   isActive: boolean
@@ -42,6 +43,7 @@ const productAttributeSchema = new Schema<IProductAttribute>(
     options: { type: [String], default: undefined },
     defaultValue: { type: Schema.Types.Mixed, default: undefined },
     order: { type: Number, required: true, min: 1 },
+    csvColumn: { type: Number, min: 1, max: 10, default: undefined },
     version: { type: Number, required: true, default: 1 },
     isDeprecated: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },

@@ -1,6 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { IProduct } from '../../../../@core/interfaces/i-product';
-import { InventoryApi, IInventoryTransfer, IRelatedProduct, ITransferPreview } from './inventory-api';
+import { IProduct, IRelatedProductEntry } from '../../../../@core/interfaces/i-product';
+import { InventoryApi, IInventoryTransfer, IProductTimelineItem, IRelatedProduct, ITransferPreview } from './inventory-api';
 import { ToastService } from '../../products/services/toast-service';
 import { ProductApi } from '../../products/services/product-list/product-api';
 
@@ -19,6 +19,7 @@ export class ProductDetailData {
   private readonly _transferring = signal(false);
   private readonly _error = signal<string | null>(null);
   private readonly _transferPreview = signal<ITransferPreview | null>(null);
+  private readonly _timeline = signal<IProductTimelineItem[]>([]);
 
   readonly product = this._product.asReadonly();
   readonly products = this._products.asReadonly();
@@ -27,6 +28,7 @@ export class ProductDetailData {
   readonly transferring = this._transferring.asReadonly();
   readonly error = this._error.asReadonly();
   readonly transferPreview = this._transferPreview.asReadonly();
+  readonly timeline = this._timeline.asReadonly();
 
   loadProduct(sku: string, includeRelated: boolean = true): void {
     this._loading.set(true);
@@ -37,14 +39,28 @@ export class ProductDetailData {
         this._product.set(product);
         if (includeRelated && product?.sku) {
           this.loadRelatedProducts(product.sku);
+          this.loadTimeline(product.sku);
         } else {
           this._relatedProducts.set([]);
+          this._timeline.set([]);
           this._loading.set(false);
         }
       },
       error: () => {
         this._error.set('Error al cargar el producto');
         this._loading.set(false);
+      },
+      complete: () => {},
+    });
+  }
+
+  private loadTimeline(sku: string): void {
+    this.inventoryApi.getProductTimeline(sku).subscribe({
+      next: (response) => {
+        this._timeline.set(response.data || []);
+      },
+      error: () => {
+        this._timeline.set([]);
       },
       complete: () => {},
     });
@@ -81,6 +97,7 @@ export class ProductDetailData {
     if (product?.sku) {
       this._relatedProducts.set([]);
       this.loadRelatedProducts(product.sku);
+      this.loadTimeline(product.sku);
     }
   }
 
@@ -134,5 +151,43 @@ export class ProductDetailData {
 
   clearPreview(): void {
     this._transferPreview.set(null);
+  }
+
+  saveRelatedProducts(relatedProducts: IRelatedProductEntry[]): Promise<IProduct> {
+    this._loading.set(true);
+    this._error.set(null);
+
+    const product = this._product();
+    const productId = product?._id || product?.id;
+    if (!productId) {
+      this._loading.set(false);
+      const error = new Error('No hay producto cargado');
+      this._error.set(error.message);
+      return Promise.reject(error);
+    }
+
+    return new Promise((resolve, reject) => {
+      this.productApi.updateProduct(String(productId), { relatedProducts }).subscribe({
+        next: (updatedProduct) => {
+          this._product.set(updatedProduct);
+          // Refresh related products and timeline after save
+          if (updatedProduct.sku) {
+            this.loadRelatedProducts(updatedProduct.sku);
+            this.loadTimeline(updatedProduct.sku);
+          }
+          this._loading.set(false);
+          this.toast.showSuccess('Relaciones actualizadas', 'Los productos relacionados se han guardado correctamente');
+          resolve(updatedProduct);
+        },
+        error: (err) => {
+          this._loading.set(false);
+          const errorMsg = err.error?.message || 'Error al guardar las relaciones';
+          this._error.set(errorMsg);
+          this.toast.showError('Error al guardar', errorMsg);
+          reject(err);
+        },
+        complete: () => {},
+      });
+    });
   }
 }

@@ -7,6 +7,8 @@ const router = Router()
 router.use(autenticate)
 
 router.get('', productTypeController.listProductTypes)
+router.get('/template', productTypeController.downloadMultiTypeTemplate)
+router.get('/template/all', productTypeController.downloadMultiTypeTemplate)
 router.get('/:id', productTypeController.getProductTypeById)
 router.get('/:id/template', productTypeController.downloadTemplate)
 

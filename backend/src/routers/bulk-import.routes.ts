@@ -24,6 +24,8 @@ router.use(autenticate)
 router.get('/history', requireRole('admin', 'operator'), bulkImportController.getProcessHistory)
 router.get('/:id', requireRole('admin', 'operator'), bulkImportController.getProcessDetails)
 router.get('/:id/errors', requireRole('admin', 'operator'), bulkImportController.getProcessErrors)
+router.get('/:id/details', requireRole('admin', 'operator'), bulkImportController.getProcessItemDetails)
+router.get('/:id/file', requireRole('admin', 'operator'), bulkImportController.downloadProcessFile)
 
 router.post('/import', requireRole('admin'), upload.single('file'), bulkImportController.startBulkImport)
 

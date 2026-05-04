@@ -1,12 +1,12 @@
 # excel-template-download Specification
 
 ## Purpose
-Enable product type template download as Excel (.xlsx) files with dropdown validation for select and boolean fields, enhancing the user experience over CSV templates.
+Enable product type template download as Excel (.xlsx) files with dropdown validation for select and boolean fields, plus related product column support for bulk import.
 
 ## Requirements
 
 ### Requirement: Excel template download with dropdowns
-The system SHALL generate an Excel (.xlsx) template file when a user requests to download a product type template, containing column headers, example values, and dropdown validation for select and boolean fields.
+The system SHALL generate an Excel (.xlsx) template file when a user requests to download a product type template, containing column headers, example values, and dropdown validation for select and boolean fields, plus the base import columns required by the bulk import contract.
 
 #### Scenario: Admin downloads Excel template for product type with select field
 - **WHEN** admin clicks "Download Template" for a product type that has a `select` field with options ["Rojo", "Azul", "Verde"]
@@ -29,12 +29,12 @@ The system SHALL generate an Excel (.xlsx) template file when a user requests to
 - **WHEN** admin adds query parameter `format=csv` to the download request
 - **THEN** system returns a CSV file (same behavior as current)
 
-#### Scenario: Template includes base product columns
+#### Scenario: Template includes base product columns and related products
 - **WHEN** admin downloads any template
-- **THEN** the file SHALL contain columns: productTypeId, productTypeVersion, sku, name, category, price, stock, followed by dynamic attribute columns
+- **THEN** the file SHALL contain columns: productTypeId, productTypeVersion, sku, ean, name, category, price, stock, relatedProducts, followed by dynamic attribute columns
 
 ### Requirement: Excel template is compatible with external tools
-The generated Excel file SHALL be openable and editable in Excel, Google Sheets, and LibreOffice Calc without data loss.
+The generated Excel file SHALL be openable and editable in Excel, Google Sheets, and LibreOffice Calc without data loss, including the `relatedProducts` column example format based on comma-separated SKU values.
 
 #### Scenario: Open template in Google Sheets
 - **WHEN** user opens the .xlsx file in Google Sheets
@@ -42,4 +42,11 @@ The generated Excel file SHALL be openable and editable in Excel, Google Sheets,
 
 #### Scenario: Export to CSV from Excel
 - **WHEN** user exports the filled Excel file to CSV and imports it
-- **THEN** the imported data passes validation and creates/updates products correctly
+- **THEN** the imported data passes validation and creates/updates products correctly, including `relatedProducts` values encoded in a single CSV cell as comma-separated SKU values
+
+### Requirement: Templates show simple related product examples
+The system SHALL present `relatedProducts` examples and helper text using the simplified comma-separated SKU format without typed suffixes.
+
+#### Scenario: User reviews example row
+- **WHEN** a user opens a generated CSV or Excel template
+- **THEN** the example value for `relatedProducts` uses a format like `SKU-002,SKU-003` instead of `SKU:type`

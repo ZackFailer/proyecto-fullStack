@@ -26,17 +26,33 @@ vi.mock('../models/product-type.model.js', () => {
 })
 
 vi.mock('../models/inventory-transfer.model.js', () => {
+  const findOne = vi.fn()
+  const find = vi.fn()
+  const countDocuments = vi.fn()
+  const updateOne = vi.fn()
+
   const InventoryTransfer = vi.fn().mockImplementation(function (this: any, payload: Record<string, unknown>) {
     Object.assign(this, payload)
     this.save = vi.fn().mockResolvedValue(undefined)
   })
+
+  ;(InventoryTransfer as unknown as { findOne: typeof findOne }).findOne = findOne
+  ;(InventoryTransfer as unknown as { find: typeof find }).find = find
+  ;(InventoryTransfer as unknown as { countDocuments: typeof countDocuments }).countDocuments = countDocuments
+  ;(InventoryTransfer as unknown as { updateOne: typeof updateOne }).updateOne = updateOne
 
   return { InventoryTransfer }
 })
 
 import { Product } from '../models/product.model.js'
 import { ProductType } from '../models/product-type.model.js'
-import { previewTransfer, transferInventory } from '../services/inventory-transfer.service.js'
+import { InventoryTransfer } from '../models/inventory-transfer.model.js'
+import {
+  markTransferAsReverted,
+  previewTransfer,
+  rollbackTransfer,
+  transferInventory,
+} from '../services/inventory-transfer.service.js'
 
 const tenantId = '507f1f77bcf86cd799439011'
 const userId = '507f1f77bcf86cd799439012'
@@ -199,5 +215,80 @@ describe('inventory-transfer.service', () => {
     await expect(
       transferInventory({ fromSKU: 'SKU-ORIGEN', toSKU: 'SKU-DESTINO', quantity: 5 }, tenantId, userId)
     ).rejects.toMatchObject({ code: 'INSUFFICIENT_STOCK' })
+  })
+
+  it('marks transfer as reverted', async () => {
+    vi.mocked((InventoryTransfer as unknown as { updateOne: typeof vi.fn }).updateOne).mockResolvedValue({
+      acknowledged: true,
+      modifiedCount: 1,
+    } as never)
+
+    await expect(markTransferAsReverted('507f1f77bcf86cd799439013', tenantId)).resolves.toBeUndefined()
+    expect((InventoryTransfer as unknown as { updateOne: typeof vi.fn }).updateOne).toHaveBeenCalledTimes(1)
+  })
+
+  it('rolls back a completed transfer by creating inverse transfer', async () => {
+    vi.mocked((InventoryTransfer as unknown as { findOne: typeof vi.fn }).findOne)
+      .mockReturnValueOnce(createLeanResult({
+        _id: '507f1f77bcf86cd799439013',
+        status: 'completed',
+        fromSKU: 'SKU-A',
+        toSKU: 'SKU-B',
+        quantityFrom: 10,
+        quantityTo: 5,
+      }) as never)
+      .mockReturnValueOnce(createLeanResult(null) as never)
+
+    vi.mocked(Product.findOne)
+      .mockReturnValueOnce(createLeanResult({
+        _id: 'from-id',
+        sku: 'SKU-B',
+        stock: 20,
+        productTypeId: 'type-b',
+        customAttributes: {},
+      }) as never)
+      .mockReturnValueOnce(createLeanResult({
+        _id: 'to-id',
+        sku: 'SKU-A',
+        stock: 0,
+        productTypeId: 'type-a',
+        customAttributes: {},
+      }) as never)
+
+    vi.mocked(ProductType.findOne)
+      .mockReturnValueOnce(createLeanResult({ conversionAttribute: undefined }) as never)
+      .mockReturnValueOnce(createLeanResult({ conversionAttribute: undefined }) as never)
+
+    vi.mocked(Product.db.client.startSession).mockResolvedValue({
+      withTransaction: async (fn: () => Promise<void>) => fn(),
+      endSession: vi.fn(),
+    } as never)
+
+    vi.mocked(Product.updateOne).mockResolvedValue({ acknowledged: true } as never)
+    vi.mocked(Product.findById)
+      .mockReturnValueOnce(createLeanResult({ stock: 15 }) as never)
+      .mockReturnValueOnce(createLeanResult({ stock: 5 }) as never)
+
+    const result = await rollbackTransfer('507f1f77bcf86cd799439013', tenantId, userId)
+
+    expect(result.success).toBe(true)
+    expect(result.fromSKU).toBe('SKU-B')
+    expect(result.toSKU).toBe('SKU-A')
+  })
+
+  it('rejects rollback when transfer is not completed', async () => {
+    vi.mocked((InventoryTransfer as unknown as { findOne: typeof vi.fn }).findOne)
+      .mockReturnValueOnce(createLeanResult({
+        _id: '507f1f77bcf86cd799439013',
+        status: 'failed',
+        fromSKU: 'SKU-A',
+        toSKU: 'SKU-B',
+        quantityFrom: 10,
+        quantityTo: 5,
+      }) as never)
+
+    await expect(rollbackTransfer('507f1f77bcf86cd799439013', tenantId, userId)).rejects.toMatchObject({
+      code: 'TRANSFER_NOT_REVERSIBLE',
+    })
   })
 })

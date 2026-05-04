@@ -15,6 +15,7 @@ export interface IProductAttribute {
   version: number;
   isDeprecated?: boolean;
   isActive: boolean;
+  csvColumn?: number;
 }
 
 export interface IProductType {
@@ -88,6 +89,24 @@ export class ProductTypeApi {
       },
       error: (err) => {
         console.error('Error downloading template:', err);
+      }
+    });
+  }
+
+  downloadGeneralTemplate(): void {
+    this.http.get(`${this.apiUrl}/template?all=true`, {
+      responseType: 'blob',
+    }).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'catalogo_completo.xlsx';
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        console.error('Error downloading general template:', err);
       }
     });
   }

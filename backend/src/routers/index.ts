@@ -12,6 +12,7 @@ import { resolveTenantContext } from '../middleware/tenantContext.middleware.js'
 import passwordChangeRequestRouter from './password-change-request.routes.js';
 import loginAttemptRouter from './login-attempt.routes.js';
 import inventoryRouter from './inventory.routes.js';
+import bulkProcessRouter from './bulk-process.routes.js';
 
 const router = Router();
 
@@ -27,6 +28,7 @@ router.use('/users', userRouter);
 router.use('/products', productRoutes);
 router.use('/product-types', productTypeRoutes);
 router.use('/bulk-import', bulkImportRoutes);
+router.use('/bulk-process', bulkProcessRouter);
 router.use('/password-change-requests', passwordChangeRequestRouter);
 router.use('/login-attempts', loginAttemptRouter);
 router.use('/inventory', inventoryRouter);

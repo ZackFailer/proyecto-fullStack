@@ -88,3 +88,53 @@ export const listTransfers = async (req: Request, res: Response, next: NextFunct
     next(error)
   }
 }
+
+export const rollbackTransfer = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const tenantId = req.user?.tenantId as string | undefined
+    const userId = req.user?.id as string | undefined
+
+    if (!tenantId || !userId) {
+      res.status(400).json({ success: false, message: 'tenantId y userId requeridos' })
+      return
+    }
+
+    const { id } = req.params
+    const reason = req.body?.reason as string | undefined
+
+    const result = await inventoryTransferService.rollbackTransfer(id, tenantId, userId, { reason })
+
+    await inventoryTransferService.markTransferAsReverted(id, tenantId)
+
+    res.status(200).json({
+      success: true,
+      message: 'Transferencia revertida',
+      data: result,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getProductTimeline = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const tenantId = req.user?.tenantId as string | undefined
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: 'tenantId requerido' })
+      return
+    }
+
+    const { sku } = req.params
+    const limit = parseInt(req.query.limit as string) || 50
+
+    const result = await inventoryTransferService.getProductTimeline(tenantId, sku, limit)
+
+    res.status(200).json({
+      success: true,
+      message: 'Timeline del producto',
+      data: result,
+    })
+  } catch (error) {
+    next(error)
+  }
+}

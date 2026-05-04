@@ -8,6 +8,7 @@ export interface BulkImportState {
   currentProcess: IBulkProcess | null;
   history: IBulkProcess[];
   errors: IItemProcessLog[];
+  warnings: IItemProcessLog[];
   loading: boolean;
   error: string | null;
 }
@@ -31,6 +32,9 @@ export class BulkImportData {
 
   private _errors = signal<IItemProcessLog[]>([]);
   public readonly errors = this._errors.asReadonly();
+
+  private _warnings = signal<IItemProcessLog[]>([]);
+  public readonly warnings = this._warnings.asReadonly();
 
   private _showErrorsDialog = signal<boolean>(false);
   public readonly showErrorsDialog = this._showErrorsDialog.asReadonly();
@@ -109,10 +113,13 @@ export class BulkImportData {
           this._isImporting.set(false);
           this.toast.bulkImportCompleted(process.successItems, process.errorItems);
           this.loadErrors(processIdValue);
-          
+
+          // Show dialog if there are errors OR warnings (will load warnings in next step)
           if (process.errorItems > 0) {
             this._showErrorsDialog.set(true);
           }
+          // Also check if there might be warnings - load details to find out
+          this.loadProcessDetails(processIdValue);
         }
       }
     });
@@ -154,9 +161,29 @@ export class BulkImportData {
     });
   }
 
+  loadProcessDetails(processId: string): void {
+    this._errors.set([]);
+    this._warnings.set([]);
+    this.api.getProcessDetailsWithWarnings(processId).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          // Separate errors and warnings
+          const errors = response.data.filter(item => item.status === 'error');
+          const warnings = response.data.filter(item => item.status === 'success' && item.warnings && item.warnings.length > 0);
+          this._errors.set(errors);
+          this._warnings.set(warnings);
+        }
+      },
+      error: (err) => {
+        console.error('Error loading process details:', err);
+      }
+    });
+  }
+
   clearCurrentProcess(): void {
     this._currentProcess.set(null);
     this._errors.set([]);
+    this._warnings.set([]);
     this._showErrorsDialog.set(false);
   }
 
@@ -184,6 +211,64 @@ export class BulkImportData {
     a.download = `import-errors-${processId}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  downloadDetailsCsv(processId: string): void {
+    const errors = this._errors();
+    const warnings = this._warnings();
+
+    if (errors.length === 0 && warnings.length === 0) return;
+
+    // Get headers from first available item
+    const allItems = [...errors, ...warnings];
+    const sampleItem = allItems.find(item => item.originalData);
+    const originalHeaders = sampleItem ? Object.keys(sampleItem.originalData || {}) : [];
+
+    // CSV headers including warnings column
+    const headers = ['rowNumber', ...originalHeaders, 'estado', 'accion', 'errores', 'advertencias'];
+
+    const rows = allItems.map(item => {
+      const originalValues = originalHeaders.map((header) => String(item.originalData?.[header] ?? ''));
+      const errorMessages = item.errors?.map(err => err.message).join('; ') ?? '';
+      const warningMessages = item.warnings?.map(w => `${w.entry}: ${w.reason}`).join('; ') ?? '';
+      const state = item.status === 'error' ? 'error' : 'advertencia';
+
+      return [
+        item.rowNumber,
+        ...originalValues,
+        state,
+        item.action ?? '',
+        `"${errorMessages.replace(/"/g, '""')}"`,
+        `"${warningMessages.replace(/"/g, '""')}"`
+      ].join(',');
+    });
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `import-details-${processId}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  downloadOriginalFile(processId: string): void {
+    this.api.downloadOriginalFile(processId).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bulk-process-${processId}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        console.error('Error downloading original file:', err);
+        this.toast.showError('Error', 'No se pudo descargar el archivo original');
+      },
+      complete: () => {},
+    });
   }
 
   getStatusLabel(status: string): string {

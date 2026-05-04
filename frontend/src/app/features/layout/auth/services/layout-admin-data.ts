@@ -48,7 +48,7 @@ export class LayoutAdminData {
     };
   });
 
-  private readonly superAdminTenantViewSidebar = computed<MenuItem[]>(() => [
+private readonly superAdminTenantViewSidebar = computed<MenuItem[]>(() => [
     {
       label: 'Dashboard',
       icon: 'pi pi-fw pi-home',
@@ -57,6 +57,7 @@ export class LayoutAdminData {
     {
       label: 'Productos',
       icon: 'pi pi-fw pi-box',
+      expanded: false,
       items: [
         { label: 'Listado', icon: 'pi pi-list', routerLink: `/admin/${this.tenantId()}/products` },
         { label: 'Importar', icon: 'pi pi-upload', routerLink: `/admin/${this.tenantId()}/products/import` },
@@ -70,8 +71,12 @@ export class LayoutAdminData {
     },
     {
       label: 'Inventario',
-      icon: 'pi pi-fw pi-briefcase',
-      routerLink: `/admin/${this.tenantId()}/inventory`
+      icon: 'pi pi-fw pi-warehouse',
+      expanded: false,
+      items: [
+        { label: 'Stock y Movimientos', icon: 'pi pi-list', routerLink: `/admin/${this.tenantId()}/inventory` },
+        { label: 'Historial de Transferencias', icon: 'pi pi-arrow-right-arrow-left', routerLink: `/admin/${this.tenantId()}/inventory/transfers` },
+      ]
     },
     {
       label: 'Clientes',
@@ -134,6 +139,7 @@ export class LayoutAdminData {
     const canAccessPrivileged = role === 'admin' || role === 'operator';
     const canAccessUsers = role === 'admin';
     const canImportProducts = role === 'admin';
+    const canViewTransferHistory = role === 'admin' || role === 'operator';
 
     if (!tenantId) {
       return [];
@@ -148,6 +154,7 @@ export class LayoutAdminData {
       {
         label: 'Productos',
         icon: 'pi pi-fw pi-box',
+        expanded: false,
         items: [
           { label: 'Listado', icon: 'pi pi-list', routerLink: `/app/${tenantId}/products` },
           ...(canImportProducts ? [{ label: 'Importar', icon: 'pi pi-upload', routerLink: `/app/${tenantId}/products/import` }] : []),
@@ -156,8 +163,14 @@ export class LayoutAdminData {
       },
       {
         label: 'Inventario',
-        icon: 'pi pi-fw pi-briefcase',
-        routerLink: `/app/${tenantId}/inventory`
+        icon: 'pi pi-fw pi-warehouse',
+        expanded: false,
+        items: [
+          { label: 'Stock y Movimientos', icon: 'pi pi-list', routerLink: `/app/${tenantId}/inventory` },
+          ...(canViewTransferHistory
+            ? [{ label: 'Historial de Transferencias', icon: 'pi pi-arrow-right-arrow-left', routerLink: `/app/${tenantId}/inventory/transfers` }]
+            : []),
+        ]
       },
       {
         label: 'Clientes',

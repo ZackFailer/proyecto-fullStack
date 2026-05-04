@@ -11,6 +11,7 @@ export interface IProductAttribute {
   version: number;
   isDeprecated?: boolean;
   isActive: boolean;
+  csvColumn?: number;
 }
 
 export interface IProductType {
@@ -37,6 +38,7 @@ export interface INewProductTypeWithAttributes extends INewProductType {
     type: ProductAttributeType;
     required: boolean;
     options?: ReadonlyArray<string>;
+    csvColumn?: number;
   }>;
 }
 

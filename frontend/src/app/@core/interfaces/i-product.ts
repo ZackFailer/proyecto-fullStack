@@ -1,3 +1,8 @@
+export interface IRelatedProductEntry {
+  sku: string;
+  type: 'derived-from' | 'component-of' | 'variant-of' | 'related';
+}
+
 export interface IProduct {
   id: string | number;
   _id?: string;
@@ -14,6 +19,7 @@ export interface IProduct {
   status?: 'active' | 'inactive';
   img?: string;
   customAttributes?: Record<string, unknown>;
+  relatedProducts?: IRelatedProductEntry[];
   createdAt?: string;
   updatedAt?: string;
 }

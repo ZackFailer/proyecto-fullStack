@@ -111,3 +111,52 @@ export const getProcessErrors = async (req: Request, res: Response, next: NextFu
     next(error)
   }
 }
+
+export const getProcessItemDetails = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const tenantId = req.user?.tenantId as string | undefined
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: 'tenantId requerido' })
+      return
+    }
+
+    const { id } = req.params
+    const result = await bulkImportService.getProcessItemDetails(tenantId, id)
+
+    res.status(200).json({
+      success: true,
+      message: 'Detalles del proceso (errores y advertencias)',
+      data: result,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const downloadProcessFile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const tenantId = req.user?.tenantId as string | undefined
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: 'tenantId requerido' })
+      return
+    }
+
+    const { id } = req.params
+    const processFile = await bulkImportService.getProcessFile(tenantId, id)
+
+    if (!processFile) {
+      res.status(404).json({ success: false, message: 'Archivo original no disponible para este proceso' })
+      return
+    }
+
+    const normalizedFileName = processFile.fileName.endsWith('.csv')
+      ? processFile.fileName
+      : `${processFile.fileName}.csv`
+
+    res.setHeader('Content-Type', 'text/csv;charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${normalizedFileName}"`)
+    res.status(200).send(processFile.fileContent)
+  } catch (error) {
+    next(error)
+  }
+}

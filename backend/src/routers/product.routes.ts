@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import * as productController from "../controllers/product.controller.js";
 import { requireRole } from "../middleware/auth.middleware.js";
 import { Product } from "../models/product.model.js";
+import * as inventoryTransferService from '../services/inventory-transfer.service.js';
 
 const router = Router();
 
@@ -11,6 +12,28 @@ router.get("/:id", productController.getProductById);
 router.get("/sku/:sku", productController.getProductBySku);
 router.post("", productController.createProduct);
 router.put("/:id", productController.updateProduct);
+
+router.get('/:sku/timeline', requireRole('admin', 'operator'), async (req, res, next) => {
+  try {
+    const tenantId = req.user?.tenantId as string
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: 'tenantId requerido' })
+      return
+    }
+
+    const { sku } = req.params
+    const limit = parseInt(req.query.limit as string) || 50
+    const timeline = await inventoryTransferService.getProductTimeline(tenantId, sku, limit)
+
+    res.status(200).json({
+      success: true,
+      message: 'Timeline del producto',
+      data: timeline,
+    })
+  } catch (error) {
+    next(error)
+  }
+})
 
 router.get("/:sku/related", requireRole("admin", "operator"), async (req, res, next) => {
   try {
